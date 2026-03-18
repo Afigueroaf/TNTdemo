@@ -2,80 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { geoEquirectangular, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
-import worldLand110m from "world-atlas/land-110m.json";
+import worldLand50m from "world-atlas/land-50m.json";
 
-type Marker = {
-  lat: number;
-  lon: number;
-};
-
-type LonLat = [number, number];
-type XYPoint = { x: number; y: number };
-
-const markers: Marker[] = [
-  { lat: 4.71, lon: -74.07 },
-  { lat: 19.43, lon: -99.13 },
-  { lat: 40.42, lon: -3.7 },
-  { lat: -12.05, lon: -77.04 },
-  { lat: 26.12, lon: -80.14 },
-  { lat: 8.98, lon: -79.52 },
-  { lat: 39.9, lon: 116.4 },
-  { lat: -34.6, lon: -58.38 },
-  { lat: -23.55, lon: -46.63 },
-  { lat: 14.6, lon: -90.52 },
-  { lat: 6.25, lon: -75.57 },
-  { lat: 18.49, lon: -69.99 },
-  { lat: 3.45, lon: -76.53 },
-];
-
-function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector3 {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lon + 180) * (Math.PI / 180);
-
-  return new THREE.Vector3(
-    -(radius * Math.sin(phi) * Math.cos(theta)),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta),
-  );
-}
-
-function getContinentsCoordinates(): LonLat[][][] {
-  const source = worldLand110m as unknown as {
-    type: "Topology";
-    objects: { land: unknown };
-    arcs: unknown[];
-    bbox?: number[];
-    transform?: unknown;
-  };
-
-  const landFeature = feature(source as never, source.objects.land as never) as unknown as {
-    geometry?: {
-      type?: string;
-      coordinates?: unknown;
-    };
-  };
-  const geometry = landFeature?.geometry;
-
-  if (!geometry?.type || !geometry?.coordinates) {
-    return [];
-  }
-
-  if (geometry.type === "Polygon") {
-    return [geometry.coordinates as LonLat[][]];
-  }
-
-  if (geometry.type === "MultiPolygon") {
-    return geometry.coordinates as LonLat[][][];
-  }
-
-  return [];
-}
-
-function createStripedContinentsTexture(): THREE.CanvasTexture {
+function createContinentsTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 1536;
-  canvas.height = 768;
+  canvas.width = 2048;
+  canvas.height = 1024;
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -84,67 +18,18 @@ function createStripedContinentsTexture(): THREE.CanvasTexture {
 
   const width = canvas.width;
   const height = canvas.height;
-  const polygons = getContinentsCoordinates();
-
-  const toCanvasPoint = (lonLat: LonLat): XYPoint => {
-    const lon = lonLat[0];
-    const lat = lonLat[1];
-    return {
-      x: ((lon + 180) / 360) * width,
-      y: ((90 - lat) / 180) * height,
-    };
+  const source = worldLand50m as unknown as {
+    type: "Topology";
+    objects: { land: unknown };
   };
+  const landFeature = feature(source as never, source.objects.land as never);
 
-  const unwrapRing = (ring: LonLat[]): XYPoint[] => {
-    const projected = ring.map(toCanvasPoint);
-    if (projected.length === 0) return projected;
+  const projection = geoEquirectangular()
+    .translate([width / 2, height / 2])
+    .scale(width / (2 * Math.PI));
+  const path = geoPath(projection, context);
 
-    const unwrapped: XYPoint[] = [projected[0]];
-    for (let index = 1; index < projected.length; index += 1) {
-      const previous = unwrapped[unwrapped.length - 1];
-      let currentX = projected[index].x;
-      const delta = currentX - previous.x;
-
-      if (delta > width / 2) {
-        currentX -= width;
-      } else if (delta < -width / 2) {
-        currentX += width;
-      }
-
-      unwrapped.push({ x: currentX, y: projected[index].y });
-    }
-
-    return unwrapped;
-  };
-
-  const traceRing = (points: XYPoint[], shift = 0) => {
-    if (points.length < 3) return;
-    context.moveTo(points[0].x + shift, points[0].y);
-    for (let index = 1; index < points.length; index += 1) {
-      context.lineTo(points[index].x + shift, points[index].y);
-    }
-    context.closePath();
-  };
-
-  const drawWrappedRing = (points: XYPoint[]) => {
-    traceRing(points, -width);
-    traceRing(points, 0);
-    traceRing(points, width);
-  };
-
-  const projectedRingArea = (points: XYPoint[]) => {
-    if (points.length < 3) return 0;
-
-    let area = 0;
-    for (let index = 0; index < points.length; index += 1) {
-      const current = points[index];
-      const next = points[(index + 1) % points.length];
-      area += current.x * next.y - next.x * current.y;
-    }
-
-    return Math.abs(area / 2);
-  };
-
+  // Ocean background
   const ocean = context.createLinearGradient(0, 0, 0, height);
   ocean.addColorStop(0, "#13081f");
   ocean.addColorStop(0.5, "#100818");
@@ -152,50 +37,48 @@ function createStripedContinentsTexture(): THREE.CanvasTexture {
   context.fillStyle = ocean;
   context.fillRect(0, 0, width, height);
 
-  context.strokeStyle = "rgba(194, 97, 255, 0.14)";
-  context.lineWidth = 1;
-  for (let y = 10; y < height; y += 28) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
-  }
+  context.fillStyle = "rgba(80, 27, 120, 0.97)";
+  context.beginPath();
+  path(landFeature as never);
+  context.fill("evenodd");
 
-  const minArea = width * height * 0.00042;
+  const landGlow = context.createLinearGradient(0, 0, 0, height);
+  landGlow.addColorStop(0, "rgba(255, 162, 230, 0.22)");
+  landGlow.addColorStop(0.5, "rgba(227, 92, 255, 0.06)");
+  landGlow.addColorStop(1, "rgba(54, 11, 92, 0.2)");
 
-  for (const polygon of polygons) {
-    const exterior = polygon[0];
-    if (!exterior) continue;
+  context.save();
+  context.beginPath();
+  path(landFeature as never);
+  context.clip("evenodd");
+  context.fillStyle = landGlow;
+  context.fillRect(0, 0, width, height);
+  context.restore();
 
-    const unwrapped = unwrapRing(exterior);
-    if (projectedRingArea(unwrapped) < minArea) continue;
+  context.strokeStyle = "rgba(255, 198, 255, 0.48)";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  path(landFeature as never);
+  context.stroke();
 
-    context.save();
-    context.beginPath();
-    drawWrappedRing(unwrapped);
-    context.clip("evenodd");
+  context.strokeStyle = "rgba(255, 242, 255, 0.28)";
+  context.lineWidth = 0.6;
+  context.beginPath();
+  path(landFeature as never);
+  context.stroke();
 
-    context.fillStyle = "rgba(61, 12, 96, 0.92)";
-    context.fillRect(0, 0, width, height);
-
-    context.strokeStyle = "rgba(238, 73, 255, 0.96)";
-    context.lineWidth = 3;
-    context.lineCap = "round";
-    for (let y = -height; y < height * 2; y += 13) {
-      context.beginPath();
-      context.moveTo(-width, y);
-      context.lineTo(width * 2, y - 122);
-      context.stroke();
-    }
-
-    context.restore();
-
-    context.beginPath();
-    drawWrappedRing(unwrapped);
-    context.strokeStyle = "rgba(255, 184, 255, 0.34)";
-    context.lineWidth = 1.1;
-    context.stroke();
-  }
+  const vignette = context.createRadialGradient(
+    width / 2,
+    height / 2,
+    width * 0.12,
+    width / 2,
+    height / 2,
+    width * 0.64,
+  );
+  vignette.addColorStop(0, "rgba(255, 255, 255, 0)");
+  vignette.addColorStop(1, "rgba(0, 0, 0, 0.26)");
+  context.fillStyle = vignette;
+  context.fillRect(0, 0, width, height);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -226,7 +109,7 @@ export function ImpactGlobe() {
     scene.add(globeGroup);
 
     const globeGeometry = new THREE.SphereGeometry(1.56, 72, 72);
-    const globeTexture = createStripedContinentsTexture();
+    const globeTexture = createContinentsTexture();
     globeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
     const globeMaterial = new THREE.MeshStandardMaterial({
@@ -240,15 +123,6 @@ export function ImpactGlobe() {
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
     globeGroup.add(globe);
 
-    const wireMaterial = new THREE.MeshBasicMaterial({
-      color: "#df00ff",
-      wireframe: true,
-      transparent: true,
-      opacity: 0.12,
-    });
-    const wire = new THREE.Mesh(globeGeometry, wireMaterial);
-    globeGroup.add(wire);
-
     const atmosphereGeometry = new THREE.SphereGeometry(1.75, 44, 44);
     const atmosphereMaterial = new THREE.MeshBasicMaterial({
       color: "#8cecff",
@@ -257,21 +131,6 @@ export function ImpactGlobe() {
     });
     const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
     globeGroup.add(atmosphere);
-
-    const markerGeometry = new THREE.SphereGeometry(0.06, 18, 18);
-    const markerMaterial = new THREE.MeshStandardMaterial({
-      color: "#b8f2ff",
-      emissive: "#6de8ff",
-      emissiveIntensity: 1,
-      roughness: 0.3,
-      metalness: 0.05,
-    });
-
-    for (const marker of markers) {
-      const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-      markerMesh.position.copy(latLonToVector3(marker.lat, marker.lon, 1.64));
-      globeGroup.add(markerMesh);
-    }
 
     const ambient = new THREE.AmbientLight("#82b4ff", 0.8);
     scene.add(ambient);
@@ -288,6 +147,9 @@ export function ImpactGlobe() {
     let lastX = 0;
     let targetRotY = 0.2;
     const targetRotX = -0.18;
+    let pointerInside = false;
+    let hoverDirection = 1;
+    let hoverIntensity = 0;
 
     function onPointerDown(event: PointerEvent) {
       pointerDown = true;
@@ -296,6 +158,12 @@ export function ImpactGlobe() {
     }
 
     function onPointerMove(event: PointerEvent) {
+      const bounds = host.getBoundingClientRect();
+      const relativeX = (event.clientX - bounds.left) / Math.max(bounds.width, 1);
+      const centeredX = (relativeX - 0.5) * 2;
+      hoverDirection = centeredX >= 0 ? 1 : -1;
+      hoverIntensity = Math.min(Math.abs(centeredX), 1);
+
       if (!pointerDown) return;
 
       const deltaX = event.clientX - lastX;
@@ -303,15 +171,28 @@ export function ImpactGlobe() {
       lastX = event.clientX;
     }
 
+    function onPointerEnter() {
+      pointerInside = true;
+    }
+
     function onPointerUp(event: PointerEvent) {
+      if (pointerDown && host.hasPointerCapture(event.pointerId)) {
+        host.releasePointerCapture(event.pointerId);
+      }
       pointerDown = false;
-      host.releasePointerCapture(event.pointerId);
+    }
+
+    function onPointerLeave(event: PointerEvent) {
+      pointerInside = false;
+      hoverIntensity = 0;
+      onPointerUp(event);
     }
 
     host.addEventListener("pointerdown", onPointerDown);
+    host.addEventListener("pointerenter", onPointerEnter);
     host.addEventListener("pointermove", onPointerMove);
     host.addEventListener("pointerup", onPointerUp);
-    host.addEventListener("pointerleave", onPointerUp);
+    host.addEventListener("pointerleave", onPointerLeave);
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -330,7 +211,8 @@ export function ImpactGlobe() {
     let raf = 0;
 
     function animate() {
-      const autoRotation = reduceMotion ? 0 : 0.0018;
+      const cursorAutoRotation = pointerInside ? hoverDirection * (0.0005 + hoverIntensity * 0.003) : 0;
+      const autoRotation = reduceMotion ? 0 : pointerInside ? cursorAutoRotation : 0.0018;
       targetRotY += autoRotation;
 
       globeGroup.rotation.y += (targetRotY - globeGroup.rotation.y) * 0.08;
@@ -346,17 +228,15 @@ export function ImpactGlobe() {
       window.cancelAnimationFrame(raf);
       resizeObserver.disconnect();
       host.removeEventListener("pointerdown", onPointerDown);
+      host.removeEventListener("pointerenter", onPointerEnter);
       host.removeEventListener("pointermove", onPointerMove);
       host.removeEventListener("pointerup", onPointerUp);
-      host.removeEventListener("pointerleave", onPointerUp);
+      host.removeEventListener("pointerleave", onPointerLeave);
       renderer.dispose();
       globeGeometry.dispose();
       atmosphereGeometry.dispose();
-      markerGeometry.dispose();
       globeMaterial.dispose();
-      wireMaterial.dispose();
       atmosphereMaterial.dispose();
-      markerMaterial.dispose();
       globeTexture.dispose();
       host.removeChild(renderer.domElement);
     };
@@ -365,15 +245,6 @@ export function ImpactGlobe() {
   return (
     <div className="impactGlobeWrap">
       <div className="impactGlobe" ref={mountRef} aria-label="Globo 3D interactivo de paises impactados" />
-      <div className="impactFlags" aria-hidden="true">
-        <span>🇨🇴</span>
-        <span>🇲🇽</span>
-        <span>🇺🇸</span>
-        <span>🇵🇦</span>
-        <span>🇵🇪</span>
-        <span>🇪🇸</span>
-        <span>🇨🇳</span>
-      </div>
     </div>
   );
 }

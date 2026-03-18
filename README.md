@@ -106,7 +106,57 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
-- Fecha: 2026-03-16
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Implementación de auto-rotación dirigida por cursor en el globo: mientras el puntero está dentro del recuadro, la esfera gira automáticamente hacia izquierda/derecha según la posición horizontal del mouse.
+- Impacto: La interacción se vuelve más intuitiva y reactiva, reforzando la sensación inmersiva sin requerir click o drag.
+- Proximo paso: Ajustar sensibilidad de velocidad por zona central/bordes según feedback de UX.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Eliminación de puntos de referencia del globo (marcadores 3D y banda visual de países) para dejar una visual limpia centrada en siluetas continentales.
+- Impacto: Se reduce ruido visual y se mejora la lectura del mapa sobre la esfera.
+- Proximo paso: Ajustar contraste de continentes según revisión final de arte.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Sustitución del pipeline de dibujo de continentes por proyección geográfica con d3-geo (geoEquirectangular + geoPath) sobre TopoJSON real.
+- Impacto: Se corrige la no visibilidad de continentes causada por proyección manual de anillos; las masas continentales vuelven a renderizarse de forma consistente.
+- Proximo paso: Ajustar contraste fino de tierra/costa según feedback visual final.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Eliminación de capas visuales que interferían con la lectura de continentes en el globo 3D (rejilla 2D de textura, hatch interno y malla wireframe sobre la esfera).
+- Impacto: Las siluetas continentales quedan nítidas y sin elementos superpuestos, mejorando claridad visual en la sección de países impactados.
+- Proximo paso: Validar contraste final de tierra y costa en mobile para cierre de arte.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Corrección del render de continentes en el globo 3D, eliminando el trazado con wrapping que cancelaba rellenos y usando dibujo directo de polígonos TopoJSON con mayor contraste de tierra/costa.
+- Impacto: Las siluetas continentales vuelven a ser visibles y legibles durante la rotación, manteniendo performance y compatibilidad.
+- Proximo paso: Validar en navegador contraste final en mobile y desktop con el equipo de diseño.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Integración de datos geográficos reales usando world-atlas/land-50m.json para siluetas continentales precisas, reemplazando coordenadas manuales con procesamiento TopoJSON.
+- Impacto: Siluetas continentales ahora exactas y realistas, mejorando la inmersión visual sin comprometer performance.
+- Proximo paso: Validar visualmente y optimizar si necesario.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Resuelto error de módulo 'topojson-client' mediante reinstalación limpia de node_modules, asegurando compatibilidad con Next.js 15.
+- Impacto: Build y dev server funcionan correctamente, eliminando bloqueo en desarrollo.
+- Proximo paso: Ejecutar dev server y validar experiencia visual del globo.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Refinamiento de siluetas continentales en globo 3D con coordenadas más detalladas y precisas (15-20 puntos por continente vs 5-10 anteriores), mejorando fidelidad visual a formas geográficas reales sin aumentar complejidad de render.
+- Impacto: Continentes más reconocibles y cercanos a la realidad en rotación, manteniendo ligereza de bundle y performance.
+- Proximo paso: Validar experiencia visual final y ajustar si es necesario para mobile/desktop.
+- Autor: Copilot
+- Cambio: Refinamiento de la seccion de paises impactados con ajuste del globo 3D para renderizar siluetas continentales mas cercanas a la geografia real, reemplazando el rayado dominante por relleno de tierra y linea de costa mas legible.
+- Impacto: Mejora la lectura visual de continentes en rotacion sin perder ligereza de render ni interaccion en la experiencia.
+- Proximo paso: Validar con equipo de diseno el nivel de detalle de costas y contraste en mobile para definir preset final.
 - Autor: Copilot
 - Cambio: Creacion inicial de README con stack propuesto, linea de desarrollo, gobernanza de agentes y skills, y politica de bitacora.
 - Impacto: Define base de trabajo para el demo institucional inmersivo.

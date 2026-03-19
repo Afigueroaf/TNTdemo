@@ -106,11 +106,95 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Implementacion de interaccion por banderas: al presionar una bandera se centra el pin correspondiente en el globo durante 24 segundos y luego el globo retoma su comportamiento habitual.
+- Impacto: Mejora de navegacion guiada en el bloque de impacto, permitiendo enfocar paises clave bajo demanda sin perder la animacion general al finalizar el foco.
+- Proximo paso: Evaluar feedback visual del estado activo de bandera para indicar claramente el pais actualmente enfocado.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Ajuste de comportamiento fuera del recuadro del globo para mantener rotacion constante de 1 revolucion cada 24 segundos mientras retorna lentamente a orientacion norte (enderezando inclinacion X/Z).
+- Impacto: Se conserva movimiento continuo en reposo sin perder referencia visual de orientacion base, con transicion mas suave y controlada.
+- Proximo paso: Ajustar finamente `returnToNorthLerp` segun preferencia de direccion de arte para retorno aun mas lento o mas perceptible.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Actualizacion de banderas del bloque de impacto a recursos de mayor resolucion (flagcdn w160) y retiro de bordes/sombras visuales; ajuste de rotacion del globo fuera del recuadro para mantener 1 giro cada 24 segundos.
+- Impacto: Mejor nitidez de banderas en pantalla y comportamiento de rotacion externa predecible y uniforme para la experiencia de lectura.
+- Proximo paso: Validar percepcion de velocidad en pantallas de 60Hz y 120Hz para confirmar que el ritmo visual se mantiene consistente.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Optimizacion de banderas del bloque de impacto reemplazando `img` por `next/image` y habilitando `flagcdn.com` en `next.config.mjs`.
+- Impacto: Se elimina advertencia de lint de Next.js y se mejora gestion de carga/render de imagenes remotas.
+- Proximo paso: Evaluar mover banderas a assets locales si se requiere independencia total de red externa.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Reduccion de velocidad del globo al 20% (auto-rotacion, seguimiento y drag), eliminacion del marco del recuadro del globo y reemplazo del texto "7 oficinas" por banderas en imagenes de Colombia, Mexico, USA, Panama, Peru, Espana y China.
+- Impacto: Interaccion visual mas pausada, bloque del globo mas limpio y lectura de paises impactados mas clara mediante iconografia de banderas.
+- Proximo paso: Verificar carga de banderas en red restringida y, si aplica, migrarlas a assets locales para evitar dependencia externa.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Ajuste visual del bloque de globo: incremento de altura en 50% y fondo del recuadro del globo configurado como transparente.
+- Impacto: Se mejora la presencia visual del globo en pantalla y se integra mejor con el fondo general de la experiencia al eliminar relleno propio del contenedor.
+- Proximo paso: Validar balance de composición en desktop y mobile para ajustar altura si el bloque desplaza demasiado el contenido siguiente.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Adicion de puntos de referencia 3D sobre el globo para Colombia, Mexico, USA, Panama, Peru, Espana y China usando coordenadas geograficas (lat/lon) proyectadas en la esfera.
+- Impacto: Se visualiza de forma inmediata la presencia en paises clave y se refuerza la narrativa de alcance global del bloque de impacto.
+- Proximo paso: Ajustar tamano/halo de marcadores segun contraste final y validar legibilidad en mobile.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Corrección del flujo de seguimiento automático del cursor en el globo 3D para que funcione sin clic incluso cuando `prefers-reduced-motion` está activo; se mantiene desactivada solo la auto-rotación base en ese modo.
+- Impacto: El globo vuelve a reaccionar al movimiento del mouse sin necesidad de drag/clic en entornos con reduced motion, evitando la percepción de fallo funcional.
+- Proximo paso: Validar manualmente con reduced-motion ON/OFF en sistema operativo para confirmar comportamiento esperado de accesibilidad.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Corrección de bug en seguimiento automático del cursor del globo 3D: el radio proyectado se calculaba con un punto que rotaba con la esfera y podía colapsar en ciertos ángulos; ahora se calcula con referencia estable al eje derecho de cámara.
+- Impacto: El seguimiento del cursor vuelve a ser consistente y continuo en cualquier orientación del globo, sin zonas muertas ni saltos por normalización incorrecta.
+- Proximo paso: Realizar prueba manual en bordes del recuadro y en distintos niveles de zoom del navegador para afinar sensibilidad final.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Ajuste del seguimiento del globo 3D para orientar el giro hacia la ubicación del mouse usando como referencia el centro proyectado de la esfera (centro y radio reales en pantalla), sin requerir clic.
+- Impacto: El movimiento responde de forma más natural y precisa al puntero, ya que la dirección se calcula respecto a la geometría visible del globo y no al centro del contenedor.
+- Proximo paso: Validar sensibilidad de seguimiento en resoluciones extremas y ajustar `followRotationMax` según feedback de UX.
+
+- Fecha: 2026-03-18
+- Autor: Copilot
+- Cambio: Refactor de la interacción del globo 3D para rotación infinita en cualquier dirección, reemplazando objetivo angular con velocidad angular e inercia y eliminando el clamp del eje X.
+- Impacto: El globo ya no se bloquea por límites de inclinación y permite giro continuo libre en X/Y con control por puntero y movimiento fluido.
+- Proximo paso: Ajustar sensibilidad de arrastre e inercia con pruebas UX en desktop y touch para definir preset final de demo.
+
 - Fecha: 2026-03-17
 - Autor: Copilot
-- Cambio: Implementación de auto-rotación dirigida por cursor en el globo: mientras el puntero está dentro del recuadro, la esfera gira automáticamente hacia izquierda/derecha según la posición horizontal del mouse.
-- Impacto: La interacción se vuelve más intuitiva y reactiva, reforzando la sensación inmersiva sin requerir click o drag.
-- Proximo paso: Ajustar sensibilidad de velocidad por zona central/bordes según feedback de UX.
+- Cambio: Ajuste de la auto-rotación del globo para mantener giro continuo incluso con el cursor dentro del recuadro: se conserva velocidad base y se suma la influencia del cursor por dirección y distancia.
+- Impacto: Se evita la sensación de rotación detenida y se mantiene respuesta interactiva sin perder movimiento automático.
+- Proximo paso: Validar con QA visual la sensibilidad final en pantallas táctiles y escritorio.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Actualización de interacción del globo para seguimiento 2D del cursor dentro del recuadro: rotación en cualquier dirección (ejes X/Y) y velocidad proporcional a la distancia entre cursor y centro.
+- Impacto: El globo ahora sigue el cursor de forma natural en 360° y acelera al alejarse del centro, mejorando control e inmersión.
+- Proximo paso: Calibrar sensibilidad final de `followRotationMax` para modo demo/presentación.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Corrección de la auto-rotación dirigida por cursor en el globo: normalización robusta del puntero dentro del recuadro, mantenimiento de dirección cerca del centro y alineación suave en eje X según posición vertical del cursor.
+- Impacto: El globo responde de forma consistente al cursor dentro del recuadro y evita bloqueos de dirección o falta de reacción percibida.
+- Proximo paso: Ajustar la sensibilidad final de giro para demo en pantallas grandes.
+
+- Fecha: 2026-03-17
+- Autor: Copilot
+- Cambio: Implementación de auto-rotación dirigida por cursor en el globo 3D: mientras el puntero está dentro del recuadro, la dirección y velocidad de giro se ajustan según la posición horizontal del cursor.
+- Impacto: Interacción más intuitiva y controlada del movimiento del globo sin perder rotación automática.
+- Proximo paso: Ajustar sensibilidad de giro con feedback de UX en mobile/desktop.
 
 - Fecha: 2026-03-17
 - Autor: Copilot

@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
 import {
   cta,
   featuredCases,
@@ -11,7 +15,25 @@ import {
 import { ExperienceMotion } from "./components/experience-motion";
 import { ImpactGlobe } from "./components/impact-globe";
 
+const IMPACT_FLAG_IMAGES = [
+  { key: "colombia", country: "Colombia", src: "https://flagcdn.com/w160/co.png" },
+  { key: "mexico", country: "Mexico", src: "https://flagcdn.com/w160/mx.png" },
+  { key: "usa", country: "Estados Unidos", src: "https://flagcdn.com/w160/us.png" },
+  { key: "panama", country: "Panama", src: "https://flagcdn.com/w160/pa.png" },
+  { key: "peru", country: "Peru", src: "https://flagcdn.com/w160/pe.png" },
+  { key: "espana", country: "Espana", src: "https://flagcdn.com/w160/es.png" },
+  { key: "china", country: "China", src: "https://flagcdn.com/w160/cn.png" },
+] as const;
+
 export default function HomePage() {
+  const [focusedCountryKey, setFocusedCountryKey] = useState<string | null>(null);
+  const [focusUntilMs, setFocusUntilMs] = useState<number | null>(null);
+
+  function focusCountryOnGlobe(countryKey: string) {
+    setFocusedCountryKey(countryKey);
+    setFocusUntilMs(Date.now() + 24_000);
+  }
+
   return (
     <main className="experience">
       <ExperienceMotion />
@@ -34,13 +56,35 @@ export default function HomePage() {
 
       <section className="section" data-reveal>
         <p className="eyebrow">Impacto</p>
-        <h2>Paises impactados</h2>
-        <ImpactGlobe />
+        <h2>Somos un equipo global</h2>
+        <ImpactGlobe focusCountryKey={focusedCountryKey} focusUntilMs={focusUntilMs} />
         <div className="statsGrid">
           {impactStats.map((item) => (
             <article className="statCard" key={item.label}>
               <h3>{item.label}</h3>
-              <p>{item.value}</p>
+              {item.label === "Paises impactados" ? (
+                <div className="impactFlagsInline" aria-label="Paises impactados: Colombia, Mexico, Estados Unidos, Panama, Peru, Espana y China">
+                  {IMPACT_FLAG_IMAGES.map((flag) => (
+                    <button
+                      key={flag.key}
+                      type="button"
+                      className="impactFlagButton"
+                      onClick={() => focusCountryOnGlobe(flag.key)}
+                      aria-label={`Centrar globo en ${flag.country} durante 24 segundos`}
+                    >
+                      <Image
+                        src={flag.src}
+                        alt={`Bandera de ${flag.country}`}
+                        width={30}
+                        height={20}
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p>{item.value}</p>
+              )}
             </article>
           ))}
         </div>

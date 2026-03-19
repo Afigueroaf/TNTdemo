@@ -177,13 +177,9 @@ body {
 .impactGlobeWrap {
   position: relative;
   margin-bottom: 1.2rem;
-  border: 1px solid color-mix(in oklab, var(--panel) 48%, #ffffff 52%);
   border-radius: 20px;
   overflow: hidden;
-  background:
-    radial-gradient(120% 120% at 80% 8%, rgba(223, 0, 255, 0.18), transparent 55%),
-    radial-gradient(120% 120% at 22% 70%, rgba(76, 224, 179, 0.14), transparent 58%),
-    color-mix(in oklab, var(--panel) 84%, #05060d 16%);
+  background: transparent;
 }
 
 .impactGlobeWrap::after {
@@ -196,8 +192,8 @@ body {
 
 .impactGlobe {
   width: 100%;
-  min-height: 280px;
-  height: clamp(280px, 46vw, 460px);
+  min-height: 420px;
+  height: clamp(420px, 69vw, 690px);
   cursor: grab;
   touch-action: none;
 }
@@ -227,6 +223,34 @@ body {
   background: color-mix(in oklab, #06111f 84%, #ffffff 16%);
   font-size: 1.05rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.impactFlagsInline {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.impactFlagsInline img {
+  width: 1.85rem;
+  height: 1.28rem;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.impactFlagButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.impactFlagButton:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .statCard {

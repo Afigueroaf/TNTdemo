@@ -6,6 +6,32 @@ import { geoEquirectangular, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import worldLand50m from "world-atlas/land-50m.json";
 
+const COUNTRY_MARKERS = [
+  { key: "colombia", name: "Colombia", lat: 4.5709, lon: -74.2973 },
+  { key: "mexico", name: "Mexico", lat: 23.6345, lon: -102.5528 },
+  { key: "usa", name: "USA", lat: 39.8283, lon: -98.5795 },
+  { key: "panama", name: "Panama", lat: 8.538, lon: -80.7821 },
+  { key: "peru", name: "Peru", lat: -9.19, lon: -75.0152 },
+  { key: "espana", name: "Espana", lat: 40.4637, lon: -3.7492 },
+  { key: "china", name: "China", lat: 35.8617, lon: 104.1954 },
+] as const;
+
+type ImpactGlobeProps = {
+  focusCountryKey?: string | null;
+  focusUntilMs?: number | null;
+};
+
+function latLonToSpherePosition(lat: number, lon: number, radius: number): THREE.Vector3 {
+  const phi = THREE.MathUtils.degToRad(90 - lat);
+  const theta = THREE.MathUtils.degToRad(lon + 180);
+
+  const x = -(radius * Math.sin(phi) * Math.cos(theta));
+  const y = radius * Math.cos(phi);
+  const z = radius * Math.sin(phi) * Math.sin(theta);
+
+  return new THREE.Vector3(x, y, z);
+}
+
 function createContinentsTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 2048;
@@ -86,8 +112,15 @@ function createContinentsTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-export function ImpactGlobe() {
+export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: ImpactGlobeProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const focusCountryKeyRef = useRef<string | null>(focusCountryKey);
+  const focusUntilMsRef = useRef<number | null>(focusUntilMs);
+
+  useEffect(() => {
+    focusCountryKeyRef.current = focusCountryKey;
+    focusUntilMsRef.current = focusUntilMs;
+  }, [focusCountryKey, focusUntilMs]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -108,7 +141,8 @@ export function ImpactGlobe() {
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
 
-    const globeGeometry = new THREE.SphereGeometry(1.56, 72, 72);
+    const globeRadius = 1.56;
+    const globeGeometry = new THREE.SphereGeometry(globeRadius, 72, 72);
     const globeTexture = createContinentsTexture();
     globeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
@@ -122,6 +156,35 @@ export function ImpactGlobe() {
     });
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
     globeGroup.add(globe);
+
+    const markerGeometry = new THREE.SphereGeometry(0.038, 16, 16);
+    const markerMaterial = new THREE.MeshStandardMaterial({
+      color: "#e7f7ff",
+      emissive: "#7ef6ff",
+      emissiveIntensity: 1.2,
+      roughness: 0.25,
+      metalness: 0.1,
+    });
+    const markerGlowGeometry = new THREE.SphereGeometry(0.08, 12, 12);
+    const markerGlowMaterial = new THREE.MeshBasicMaterial({
+      color: "#a9f2ff",
+      transparent: true,
+      opacity: 0.32,
+    });
+
+    COUNTRY_MARKERS.forEach((country) => {
+      const position = latLonToSpherePosition(country.lat, country.lon, globeRadius + 0.03);
+
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.copy(position);
+      marker.name = `marker-${country.key}`;
+
+      const glow = new THREE.Mesh(markerGlowGeometry, markerGlowMaterial);
+      glow.position.copy(position);
+
+      globeGroup.add(marker);
+      globeGroup.add(glow);
+    });
 
     const atmosphereGeometry = new THREE.SphereGeometry(1.75, 44, 44);
     const atmosphereMaterial = new THREE.MeshBasicMaterial({
@@ -145,54 +208,127 @@ export function ImpactGlobe() {
 
     let pointerDown = false;
     let lastX = 0;
-    let targetRotY = 0.2;
-    const targetRotX = -0.18;
+    let lastY = 0;
     let pointerInside = false;
-    let hoverDirection = 1;
-    let hoverIntensity = 0;
+    let pointerNormX = 0;
+    let pointerNormY = 0;
+    let angularVelocityY = 0;
+    let angularVelocityX = 0;
+    const baseAutoRotation = 0.00036;
+    const followRotationMax = 0.00076;
+    const centerDeadZone = 0.04;
+    const dragSensitivityY = 0.0009;
+    const dragSensitivityX = 0.00064;
+    const maxAngularVelocity = 0.016;
+    const inertia = 0.94;
+    const outsideRotationPerSecond = (Math.PI * 2) / 24;
+    const returnToNorthLerp = 0.002;
+    const clock = new THREE.Clock();
+    const globeCenterWorld = new THREE.Vector3();
+    const globeCenterNdc = new THREE.Vector3();
+    const globeEdgeWorld = new THREE.Vector3();
+    const globeEdgeNdc = new THREE.Vector3();
+    const cameraRightWorld = new THREE.Vector3();
+    const returnEuler = new THREE.Euler(0, 0, 0, "YXZ");
+    const frontAxis = new THREE.Vector3(0, 0, 1);
+    const markerDirectionMap = new Map<string, THREE.Vector3>(
+      COUNTRY_MARKERS.map((country) => [
+        country.key,
+        latLonToSpherePosition(country.lat, country.lon, 1).normalize(),
+      ]),
+    );
+    const focusQuaternion = new THREE.Quaternion();
+
+    function updatePointerState(event: PointerEvent) {
+      const rect = host.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      globe.updateWorldMatrix(true, false);
+      camera.updateWorldMatrix(true, false);
+
+      globe.getWorldPosition(globeCenterWorld);
+      globeCenterNdc.copy(globeCenterWorld).project(camera);
+
+      cameraRightWorld.set(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
+      globeEdgeWorld.copy(globeCenterWorld).addScaledVector(cameraRightWorld, globeRadius);
+      globeEdgeNdc.copy(globeEdgeWorld).project(camera);
+
+      const centerX = (globeCenterNdc.x * 0.5 + 0.5) * rect.width;
+      const centerY = (-globeCenterNdc.y * 0.5 + 0.5) * rect.height;
+      const edgeX = (globeEdgeNdc.x * 0.5 + 0.5) * rect.width;
+      const edgeY = (-globeEdgeNdc.y * 0.5 + 0.5) * rect.height;
+
+      const radiusPx = Math.max(1, Math.hypot(edgeX - centerX, edgeY - centerY));
+      const pointerX = event.clientX - rect.left;
+      const pointerY = event.clientY - rect.top;
+
+      pointerNormX = THREE.MathUtils.clamp((pointerX - centerX) / radiusPx, -1, 1);
+      pointerNormY = THREE.MathUtils.clamp((pointerY - centerY) / radiusPx, -1, 1);
+    }
 
     function onPointerDown(event: PointerEvent) {
       pointerDown = true;
       lastX = event.clientX;
+      lastY = event.clientY;
       host.setPointerCapture(event.pointerId);
     }
 
     function onPointerMove(event: PointerEvent) {
-      const bounds = host.getBoundingClientRect();
-      const relativeX = (event.clientX - bounds.left) / Math.max(bounds.width, 1);
-      const centeredX = (relativeX - 0.5) * 2;
-      hoverDirection = centeredX >= 0 ? 1 : -1;
-      hoverIntensity = Math.min(Math.abs(centeredX), 1);
+      updatePointerState(event);
+      pointerInside = true;
 
       if (!pointerDown) return;
 
       const deltaX = event.clientX - lastX;
-      targetRotY += deltaX * 0.0045;
+      const deltaY = event.clientY - lastY;
+
+      angularVelocityY += deltaX * dragSensitivityY;
+      angularVelocityX += deltaY * dragSensitivityX;
+      angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxAngularVelocity, maxAngularVelocity);
+      angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxAngularVelocity, maxAngularVelocity);
+
       lastX = event.clientX;
+      lastY = event.clientY;
     }
 
-    function onPointerEnter() {
+    function onPointerEnter(event: PointerEvent) {
       pointerInside = true;
+      updatePointerState(event);
     }
 
     function onPointerUp(event: PointerEvent) {
+      pointerDown = false;
+      if (host.hasPointerCapture(event.pointerId)) {
+        host.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    function onPointerLeave(event: PointerEvent) {
+      pointerInside = false;
+      pointerNormX = 0;
+      pointerNormY = 0;
       if (pointerDown && host.hasPointerCapture(event.pointerId)) {
         host.releasePointerCapture(event.pointerId);
       }
       pointerDown = false;
     }
 
-    function onPointerLeave(event: PointerEvent) {
+    function onPointerCancel(event: PointerEvent) {
       pointerInside = false;
-      hoverIntensity = 0;
-      onPointerUp(event);
+      pointerNormX = 0;
+      pointerNormY = 0;
+      if (host.hasPointerCapture(event.pointerId)) {
+        host.releasePointerCapture(event.pointerId);
+      }
+      pointerDown = false;
     }
 
-    host.addEventListener("pointerdown", onPointerDown);
     host.addEventListener("pointerenter", onPointerEnter);
+    host.addEventListener("pointerdown", onPointerDown);
     host.addEventListener("pointermove", onPointerMove);
     host.addEventListener("pointerup", onPointerUp);
     host.addEventListener("pointerleave", onPointerLeave);
+    host.addEventListener("pointercancel", onPointerCancel);
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -211,12 +347,73 @@ export function ImpactGlobe() {
     let raf = 0;
 
     function animate() {
-      const cursorAutoRotation = pointerInside ? hoverDirection * (0.0005 + hoverIntensity * 0.003) : 0;
-      const autoRotation = reduceMotion ? 0 : pointerInside ? cursorAutoRotation : 0.0018;
-      targetRotY += autoRotation;
+      const now = Date.now();
+      const activeFocusCountry = focusCountryKeyRef.current;
+      const activeFocusUntil = focusUntilMsRef.current;
+      const isFocusMode =
+        Boolean(activeFocusCountry) &&
+        typeof activeFocusUntil === "number" &&
+        now < activeFocusUntil;
+      const deltaSeconds = clock.getDelta();
+      const frameScale = THREE.MathUtils.clamp(deltaSeconds * 60, 0.2, 2.5);
+      const damping = Math.pow(inertia, frameScale);
+      let autoRotationY = 0;
+      let autoRotationX = 0;
 
-      globeGroup.rotation.y += (targetRotY - globeGroup.rotation.y) * 0.08;
-      globeGroup.rotation.x += (targetRotX - globeGroup.rotation.x) * 0.08;
+      if (isFocusMode && activeFocusCountry) {
+        const markerDirection = markerDirectionMap.get(activeFocusCountry);
+
+        if (markerDirection) {
+          focusQuaternion.setFromUnitVectors(markerDirection, frontAxis);
+          globeGroup.quaternion.slerp(focusQuaternion, THREE.MathUtils.clamp(0.08 * frameScale, 0, 1));
+        }
+
+        angularVelocityY = THREE.MathUtils.lerp(angularVelocityY, 0, 0.2 * frameScale);
+        angularVelocityX = THREE.MathUtils.lerp(angularVelocityX, 0, 0.2 * frameScale);
+
+        renderer.render(scene, camera);
+        raf = window.requestAnimationFrame(animate);
+        return;
+      }
+
+      if (pointerInside) {
+        if (!reduceMotion) {
+          autoRotationY += baseAutoRotation;
+        }
+
+        const distance = THREE.MathUtils.clamp(Math.hypot(pointerNormX, pointerNormY), 0, 1);
+        const followSpeedFactor = reduceMotion ? 0.55 : 1;
+        const speed = followRotationMax * followSpeedFactor * Math.max(distance, centerDeadZone);
+
+        autoRotationY += pointerNormX * speed;
+        autoRotationX += -pointerNormY * speed;
+      } else {
+        // Outside the globe area, maintain constant orbital speed: 1 turn / 24s.
+        const outsideStep = outsideRotationPerSecond * deltaSeconds;
+        angularVelocityY = THREE.MathUtils.lerp(angularVelocityY, outsideStep, 0.14 * frameScale);
+        angularVelocityX *= damping;
+      }
+
+      if (pointerInside) {
+        angularVelocityY += autoRotationY;
+        angularVelocityX += autoRotationX;
+      }
+
+      angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxAngularVelocity, maxAngularVelocity);
+      angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxAngularVelocity, maxAngularVelocity);
+
+      globeGroup.rotateY(angularVelocityY);
+      globeGroup.rotateX(angularVelocityX);
+
+      if (!pointerInside) {
+        returnEuler.setFromQuaternion(globeGroup.quaternion, "YXZ");
+        returnEuler.x = THREE.MathUtils.lerp(returnEuler.x, 0, THREE.MathUtils.clamp(returnToNorthLerp * frameScale, 0, 1));
+        returnEuler.z = THREE.MathUtils.lerp(returnEuler.z, 0, THREE.MathUtils.clamp(returnToNorthLerp * frameScale, 0, 1));
+        globeGroup.quaternion.setFromEuler(returnEuler);
+      }
+
+      angularVelocityY *= damping;
+      angularVelocityX *= damping;
 
       renderer.render(scene, camera);
       raf = window.requestAnimationFrame(animate);
@@ -227,16 +424,21 @@ export function ImpactGlobe() {
     return () => {
       window.cancelAnimationFrame(raf);
       resizeObserver.disconnect();
-      host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerenter", onPointerEnter);
+      host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointermove", onPointerMove);
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointerleave", onPointerLeave);
+      host.removeEventListener("pointercancel", onPointerCancel);
       renderer.dispose();
       globeGeometry.dispose();
       atmosphereGeometry.dispose();
+      markerGeometry.dispose();
+      markerGlowGeometry.dispose();
       globeMaterial.dispose();
       atmosphereMaterial.dispose();
+      markerMaterial.dispose();
+      markerGlowMaterial.dispose();
       globeTexture.dispose();
       host.removeChild(renderer.domElement);
     };

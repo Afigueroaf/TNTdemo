@@ -21,3 +21,5 @@ Reglas:
 - Enfoque mobile-first con mejoras progresivas para desktop.
 - Respetar accesibilidad y reduced-motion.
 - Proponer solo interacciones con objetivo claro de negocio o storytelling.
+- Considerar patrones de UI de shadcn/ui (jerarquia visual, espaciado, estados de hover/focus, cards y botones) como referencia para componentes puntuales.
+- Evitar aplicar shadcn/ui de forma uniforme en toda la pagina; combinarlo con una direccion visual propia para no generar un aspecto plano o generico.

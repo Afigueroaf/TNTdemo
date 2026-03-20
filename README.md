@@ -106,6 +106,36 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Fix de runtime en IntroBillboard para suscripcion de `matchMedia` con fallback compatible (`addEventListener/removeEventListener` y `addListener/removeListener`).
+- Impacto: Se elimina el error `TypeError: e[o] is not a function` en navegadores donde `MediaQueryList` no implementa los metodos modernos.
+- Proximo paso: Validar en el navegador objetivo que glitch y desplazamiento por scroll se mantengan activos sin errores en consola.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Revision completa del IntroBillboard: reactivacion robusta de glitch por puntero a nivel de seccion, ajuste de desplazamiento por scroll con recalculo en resize y modo reduced-motion con intensidad reducida (no apagado total).
+- Impacto: El intro vuelve a responder al puntero y al scroll de forma consistente, incluyendo escenarios donde antes los efectos quedaban inactivos.
+- Proximo paso: Validar en navegadores con preferencia de movimiento reducido para confirmar que el comportamiento suave sigue siendo legible y no intrusivo.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Extraccion del bloque "Agency Worldwide" a componente independiente (`IntroBillboard`) con su logica de glitch y desplazamiento por scroll.
+- Impacto: La home queda mas modular y mantenible, replicando el patron de integracion por componentes usado en visuals como el globe.
+- Proximo paso: Evaluar si el componente requiere props para parametrizar textos/ritmo en futuras variantes editoriales.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Correccion de la animacion de "AGENCY WORLDWIDE" para que el desplazamiento horizontal por scroll use recorrido proporcional al viewport y permita salida completa hacia la izquierda.
+- Impacto: El titular ahora abandona visiblemente la pantalla al descender, cumpliendo el efecto narrativo esperado.
+- Proximo paso: Ajustar el factor de recorrido (1.2x viewport) segun ritmo deseado de direccion de arte.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Se agrego desplazamiento horizontal lento hacia la izquierda del texto "AGENCY WORLDWIDE" en la portada, vinculado al scroll descendente.
+- Impacto: La cabecera gana continuidad narrativa durante el descenso, reforzando la sensacion inmersiva del hero.
+- Proximo paso: Ajustar factor de desplazamiento maximo si se busca un movimiento mas sutil o mas dramatico en pantallas grandes.
+
 - Fecha: 2026-03-19
 - Autor: Copilot
 - Cambio: Prisma de Services configurado como totalmente invisible, ocultando tanto la malla del solido como su contorno de aristas.

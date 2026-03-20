@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import {
   cta,
@@ -11,6 +11,7 @@ import {
   socialLinks,
 } from "./data/tnt-content";
 import { ExperienceMotion } from "./components/experience-motion";
+import { IntroBillboard } from "./components/intro-billboard";
 import { ImpactGlobe } from "./components/impact-globe";
 import { Services } from "./components/services";
 
@@ -24,122 +25,20 @@ const IMPACT_FLAG_IMAGES = [
   { key: "china", country: "China", src: "https://flagcdn.com/w160/cn.png" },
 ] as const;
 
-const INTRO_LINE_ONE = "AGENCY";
-const INTRO_LINE_TWO = "WORLDWIDE";
-const GLITCH_EFFECTS = ["glyphWarpA", "glyphWarpB", "glyphWarpC"] as const;
-
 export default function HomePage() {
   const [focusedCountryKey, setFocusedCountryKey] = useState<string | null>(null);
   const [focusUntilMs, setFocusUntilMs] = useState<number | null>(null);
-  const [glitchMap, setGlitchMap] = useState<Record<string, string>>({});
-  const glitchIntervalRef = useRef<number | null>(null);
-  const lastPointerBurstAtRef = useRef<number>(0);
 
   function focusCountryOnGlobe(countryKey: string) {
     setFocusedCountryKey(countryKey);
     setFocusUntilMs(Date.now() + 24_000);
   }
 
-  function clearGlitchLoop() {
-    if (glitchIntervalRef.current !== null) {
-      window.clearInterval(glitchIntervalRef.current);
-      glitchIntervalRef.current = null;
-    }
-    setGlitchMap({});
-  }
-
-  function triggerGlitchBurst() {
-    const allGlyphIds = [
-      ...Array.from({ length: INTRO_LINE_ONE.length }, (_, i) => `l1-${i}`),
-      ...Array.from({ length: INTRO_LINE_TWO.length }, (_, i) => `l2-${i}`),
-    ];
-    const burstCount = Math.max(1, Math.floor(Math.random() * 3));
-
-    for (let i = 0; i < burstCount; i += 1) {
-      const glyphId = allGlyphIds[Math.floor(Math.random() * allGlyphIds.length)];
-      const effectClass = GLITCH_EFFECTS[Math.floor(Math.random() * GLITCH_EFFECTS.length)];
-
-      // Remove and re-apply in next frame to force animation restart on same glyph.
-      setGlitchMap((prev) => {
-        const next = { ...prev };
-        delete next[glyphId];
-        return next;
-      });
-
-      window.requestAnimationFrame(() => {
-        setGlitchMap((prev) => ({ ...prev, [glyphId]: effectClass }));
-      });
-
-      window.setTimeout(() => {
-        setGlitchMap((prev) => {
-          if (!prev[glyphId]) return prev;
-          const next = { ...prev };
-          delete next[glyphId];
-          return next;
-        });
-      }, 110 + Math.floor(Math.random() * 130));
-    }
-  }
-
-  function startGlitchLoop() {
-    clearGlitchLoop();
-    triggerGlitchBurst();
-    glitchIntervalRef.current = window.setInterval(triggerGlitchBurst, 120 + Math.floor(Math.random() * 110));
-  }
-
-  function handleTitlePointerMove() {
-    const now = performance.now();
-    if (now - lastPointerBurstAtRef.current < 70) return;
-
-    lastPointerBurstAtRef.current = now;
-    triggerGlitchBurst();
-  }
-
-  useEffect(() => {
-    return () => clearGlitchLoop();
-  }, []);
-
 
   return (
     <main className="experience">
       <ExperienceMotion />
-
-      <section className="introBillboard" aria-label="Agency Worldwide">
-        <div className="introBillboardInner">
-          <p className="introKicker">Global Creative Network</p>
-          <h1
-            className="introTitle"
-            onPointerEnter={startGlitchLoop}
-            onPointerLeave={clearGlitchLoop}
-            onPointerMove={handleTitlePointerMove}
-          >
-            <span className="introWord introWordRed" aria-label="Agency">
-              {Array.from(INTRO_LINE_ONE).map((char, index) => {
-                const glyphId = `l1-${index}`;
-                const glitchClass = glitchMap[glyphId] ?? "";
-
-                return (
-                  <span key={glyphId} className={`introGlyph ${glitchClass}`}>
-                    {char}
-                  </span>
-                );
-              })}
-            </span>
-            <span className="introWord introWordWhite" aria-label="Worldwide">
-              {Array.from(INTRO_LINE_TWO).map((char, index) => {
-                const glyphId = `l2-${index}`;
-                const glitchClass = glitchMap[glyphId] ?? "";
-
-                return (
-                  <span key={glyphId} className={`introGlyph ${glitchClass}`}>
-                    {char}
-                  </span>
-                );
-              })}
-            </span>
-          </h1>
-        </div>
-      </section>
+      <IntroBillboard />
 
       <section className="section" data-reveal>
         <p className="eyebrow">Impacto</p>

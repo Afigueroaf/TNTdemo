@@ -118,6 +118,7 @@ body {
   margin: 0;
   line-height: 0.9;
   perspective: 950px;
+  will-change: transform;
 }
 
 .introWord {
@@ -868,8 +869,7 @@ p {
   .card,
   .section,
   .journeyProgressBar,
-  .impactGlobe,
-  .introGlyph {
+  .impactGlobe {
     animation: none !important;
     transition: none !important;
     transform: none !important;

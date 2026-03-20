@@ -1,19 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   cta,
   featuredCases,
-  hero,
   impactStats,
   legalLinks,
   offices,
-  services,
   socialLinks,
 } from "./data/tnt-content";
 import { ExperienceMotion } from "./components/experience-motion";
 import { ImpactGlobe } from "./components/impact-globe";
+import { Services } from "./components/services";
 
 const IMPACT_FLAG_IMAGES = [
   { key: "colombia", country: "Colombia", src: "https://flagcdn.com/w160/co.png" },
@@ -25,45 +24,138 @@ const IMPACT_FLAG_IMAGES = [
   { key: "china", country: "China", src: "https://flagcdn.com/w160/cn.png" },
 ] as const;
 
+const INTRO_LINE_ONE = "AGENCY";
+const INTRO_LINE_TWO = "WORLDWIDE";
+const GLITCH_EFFECTS = ["glyphWarpA", "glyphWarpB", "glyphWarpC"] as const;
+
 export default function HomePage() {
   const [focusedCountryKey, setFocusedCountryKey] = useState<string | null>(null);
   const [focusUntilMs, setFocusUntilMs] = useState<number | null>(null);
+  const [glitchMap, setGlitchMap] = useState<Record<string, string>>({});
+  const glitchIntervalRef = useRef<number | null>(null);
+  const lastPointerBurstAtRef = useRef<number>(0);
 
   function focusCountryOnGlobe(countryKey: string) {
     setFocusedCountryKey(countryKey);
     setFocusUntilMs(Date.now() + 24_000);
   }
 
+  function clearGlitchLoop() {
+    if (glitchIntervalRef.current !== null) {
+      window.clearInterval(glitchIntervalRef.current);
+      glitchIntervalRef.current = null;
+    }
+    setGlitchMap({});
+  }
+
+  function triggerGlitchBurst() {
+    const allGlyphIds = [
+      ...Array.from({ length: INTRO_LINE_ONE.length }, (_, i) => `l1-${i}`),
+      ...Array.from({ length: INTRO_LINE_TWO.length }, (_, i) => `l2-${i}`),
+    ];
+    const burstCount = Math.max(1, Math.floor(Math.random() * 3));
+
+    for (let i = 0; i < burstCount; i += 1) {
+      const glyphId = allGlyphIds[Math.floor(Math.random() * allGlyphIds.length)];
+      const effectClass = GLITCH_EFFECTS[Math.floor(Math.random() * GLITCH_EFFECTS.length)];
+
+      // Remove and re-apply in next frame to force animation restart on same glyph.
+      setGlitchMap((prev) => {
+        const next = { ...prev };
+        delete next[glyphId];
+        return next;
+      });
+
+      window.requestAnimationFrame(() => {
+        setGlitchMap((prev) => ({ ...prev, [glyphId]: effectClass }));
+      });
+
+      window.setTimeout(() => {
+        setGlitchMap((prev) => {
+          if (!prev[glyphId]) return prev;
+          const next = { ...prev };
+          delete next[glyphId];
+          return next;
+        });
+      }, 110 + Math.floor(Math.random() * 130));
+    }
+  }
+
+  function startGlitchLoop() {
+    clearGlitchLoop();
+    triggerGlitchBurst();
+    glitchIntervalRef.current = window.setInterval(triggerGlitchBurst, 120 + Math.floor(Math.random() * 110));
+  }
+
+  function handleTitlePointerMove() {
+    const now = performance.now();
+    if (now - lastPointerBurstAtRef.current < 70) return;
+
+    lastPointerBurstAtRef.current = now;
+    triggerGlitchBurst();
+  }
+
+  useEffect(() => {
+    return () => clearGlitchLoop();
+  }, []);
+
+
   return (
     <main className="experience">
       <ExperienceMotion />
 
-      <section className="hero section" data-reveal>
-        <div className="heroOrbs" aria-hidden="true">
-          <span className="orb orbA" />
-          <span className="orb orbB" />
-          <span className="orb orbC" />
-        </div>
-        <p className="eyebrow">Inicio TNT - Version demo</p>
-        <h1>{hero.title}</h1>
-        <p className="lead">{hero.subtitle}</p>
-        <div className="heroMeta">
-          <span>#PowerfulIdea</span>
-          <span>Equipo global</span>
-          <span>Ideas poderosas</span>
+      <section className="introBillboard" aria-label="Agency Worldwide">
+        <div className="introBillboardInner">
+          <p className="introKicker">Global Creative Network</p>
+          <h1
+            className="introTitle"
+            onPointerEnter={startGlitchLoop}
+            onPointerLeave={clearGlitchLoop}
+            onPointerMove={handleTitlePointerMove}
+          >
+            <span className="introWord introWordRed" aria-label="Agency">
+              {Array.from(INTRO_LINE_ONE).map((char, index) => {
+                const glyphId = `l1-${index}`;
+                const glitchClass = glitchMap[glyphId] ?? "";
+
+                return (
+                  <span key={glyphId} className={`introGlyph ${glitchClass}`}>
+                    {char}
+                  </span>
+                );
+              })}
+            </span>
+            <span className="introWord introWordWhite" aria-label="Worldwide">
+              {Array.from(INTRO_LINE_TWO).map((char, index) => {
+                const glyphId = `l2-${index}`;
+                const glitchClass = glitchMap[glyphId] ?? "";
+
+                return (
+                  <span key={glyphId} className={`introGlyph ${glitchClass}`}>
+                    {char}
+                  </span>
+                );
+              })}
+            </span>
+          </h1>
         </div>
       </section>
 
       <section className="section" data-reveal>
         <p className="eyebrow">Impacto</p>
-        <h2>Somos un equipo global</h2>
+        <div className="impactTitleSplit">
+          <h2>Somos un equipo global</h2>
+          <p className="impactInlineLead">
+            de creativos y estrategas que entiende el poder transformador de una #PowerfulIdea
+          </p>
+        </div>
         <ImpactGlobe focusCountryKey={focusedCountryKey} focusUntilMs={focusUntilMs} />
         <div className="statsGrid">
           {impactStats.map((item) => (
             <article className="statCard" key={item.label}>
               <h3>{item.label}</h3>
-              {item.label === "Paises impactados" ? (
-                <div className="impactFlagsInline" aria-label="Paises impactados: Colombia, Mexico, Estados Unidos, Panama, Peru, Espana y China">
+              {item.label === "7 Oficinas" ? (
+                <div className="impactFlagsInline" aria-label="7 Oficinas: Colombia, Mexico, Estados Unidos, Panama, Peru, Espana y China">
                   {IMPACT_FLAG_IMAGES.map((flag) => (
                     <button
                       key={flag.key}
@@ -93,17 +185,7 @@ export default function HomePage() {
       <section className="section" data-reveal>
         <p className="eyebrow">Servicios</p>
         <h2>Nuestros Servicios</h2>
-        <div className="cardsGrid">
-          {services.map((service) => (
-            <article className="card" key={service.title}>
-              <h3>{service.title}</h3>
-              <p>{service.summary}</p>
-              <a className="inlineLink" href={service.href}>
-                Ver mas
-              </a>
-            </article>
-          ))}
-        </div>
+        <Services />
       </section>
 
       <section className="section" data-reveal>

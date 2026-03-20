@@ -6,7 +6,7 @@ export const hero = {
 
 export const impactStats = [
   {
-    label: "Paises impactados",
+    label: "7 Oficinas",
     value: "7 oficinas",
   },
   {

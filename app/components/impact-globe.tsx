@@ -138,6 +138,17 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
+    function updateRendererSize(width: number, height: number) {
+      if (width <= 0 || height <= 0) return;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+    }
+
+    const initialRect = host.getBoundingClientRect();
+    updateRendererSize(initialRect.width, initialRect.height);
+
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
 
@@ -190,7 +201,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     const atmosphereMaterial = new THREE.MeshBasicMaterial({
       color: "#8cecff",
       transparent: true,
-      opacity: 0.11,
+      opacity: 0,
     });
     const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
     globeGroup.add(atmosphere);
@@ -217,8 +228,9 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     const baseAutoRotation = 0.00036;
     const followRotationMax = 0.00076;
     const centerDeadZone = 0.04;
-    const dragSensitivityY = 0.0009;
-    const dragSensitivityX = 0.00064;
+    const dragSensitivityY = 0.0012;
+    const dragSensitivityX = 0.0009;
+    const dragBoost = 1.25;
     const maxAngularVelocity = 0.016;
     const inertia = 0.94;
     const outsideRotationPerSecond = (Math.PI * 2) / 24;
@@ -282,8 +294,8 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
       const deltaX = event.clientX - lastX;
       const deltaY = event.clientY - lastY;
 
-      angularVelocityY += deltaX * dragSensitivityY;
-      angularVelocityX += deltaY * dragSensitivityX;
+      angularVelocityY += deltaX * dragSensitivityY * dragBoost;
+      angularVelocityX += deltaY * dragSensitivityX * dragBoost;
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxAngularVelocity, maxAngularVelocity);
       angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxAngularVelocity, maxAngularVelocity);
 
@@ -336,11 +348,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
 
       const width = entry.contentRect.width;
       const height = entry.contentRect.height;
-      if (width === 0 || height === 0) return;
-
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      updateRendererSize(width, height);
     });
     resizeObserver.observe(host);
 
@@ -446,7 +454,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
 
   return (
     <div className="impactGlobeWrap">
-      <div className="impactGlobe" ref={mountRef} aria-label="Globo 3D interactivo de paises impactados" />
+      <div className="impactGlobe" ref={mountRef} aria-label="Globo 3D interactivo de 7 oficinas" />
     </div>
   );
 }

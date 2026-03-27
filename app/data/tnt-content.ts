@@ -1,9 +1,3 @@
-export const hero = {
-  title: "Somos un equipo global de creativos y estrategas",
-  subtitle:
-    "Entendemos el poder transformador de una PowerfulIdea para impulsar marcas en mercados locales y regionales.",
-};
-
 export const impactStats = [
   {
     label: "7 Oficinas",
@@ -19,32 +13,57 @@ export const impactStats = [
   },
 ];
 
-export const services = [
+export const impactCountries = [
   {
-    title: "Creatividad",
-    href: "/creatividad/",
-    summary:
-      "Mentes que le apuntan a los insights y la creatividad para convertir oportunidades en ideas poderosas.",
+    key: "colombia",
+    country: "Colombia",
+    lat: 4.5709,
+    lon: -74.2973,
+    flagSrc: "https://flagcdn.com/w160/co.png",
   },
   {
-    title: "Marketing Experiencial",
-    href: "/marketing-experiencial/",
-    summary:
-      "En TNT llevamos las marcas al siguiente nivel con experiencias que van directo al corazon.",
+    key: "mexico",
+    country: "Mexico",
+    lat: 23.6345,
+    lon: -102.5528,
+    flagSrc: "https://flagcdn.com/w160/mx.png",
   },
   {
-    title: "Marketing Digital",
-    href: "/marketing-digital/",
-    summary:
-      "Estrategia digital 360 basada en data, AI y ejecucion para resultados de negocio.",
+    key: "usa",
+    country: "Estados Unidos",
+    lat: 39.8283,
+    lon: -98.5795,
+    flagSrc: "https://flagcdn.com/w160/us.png",
   },
   {
-    title: "Branding",
-    href: "/branding/",
-    summary:
-      "Construimos identidades que no solo se ven, se viven y dejan huella.",
+    key: "panama",
+    country: "Panama",
+    lat: 8.538,
+    lon: -80.7821,
+    flagSrc: "https://flagcdn.com/w160/pa.png",
   },
-];
+  {
+    key: "peru",
+    country: "Peru",
+    lat: -9.19,
+    lon: -75.0152,
+    flagSrc: "https://flagcdn.com/w160/pe.png",
+  },
+  {
+    key: "espana",
+    country: "Espana",
+    lat: 40.4637,
+    lon: -3.7492,
+    flagSrc: "https://flagcdn.com/w160/es.png",
+  },
+  {
+    key: "china",
+    country: "China",
+    lat: 35.8617,
+    lon: 104.1954,
+    flagSrc: "https://flagcdn.com/w160/cn.png",
+  },
+] as const;
 
 export const featuredCases = [
   {

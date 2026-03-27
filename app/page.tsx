@@ -1,91 +1,16 @@
-"use client";
-
-import { useState } from "react";
-import Image from "next/image";
 import {
   cta,
   featuredCases,
-  impactStats,
   legalLinks,
   offices,
   socialLinks,
 } from "./data/tnt-content";
-import { ExperienceMotion } from "./components/experience-motion";
-import { IntroBillboard } from "./components/intro-billboard";
-import { ImpactGlobe } from "./components/impact-globe";
-import { Services } from "./components/services";
-
-const IMPACT_FLAG_IMAGES = [
-  { key: "colombia", country: "Colombia", src: "https://flagcdn.com/w160/co.png" },
-  { key: "mexico", country: "Mexico", src: "https://flagcdn.com/w160/mx.png" },
-  { key: "usa", country: "Estados Unidos", src: "https://flagcdn.com/w160/us.png" },
-  { key: "panama", country: "Panama", src: "https://flagcdn.com/w160/pa.png" },
-  { key: "peru", country: "Peru", src: "https://flagcdn.com/w160/pe.png" },
-  { key: "espana", country: "Espana", src: "https://flagcdn.com/w160/es.png" },
-  { key: "china", country: "China", src: "https://flagcdn.com/w160/cn.png" },
-] as const;
+import { HomeClientShell } from "./components/home-client-shell";
 
 export default function HomePage() {
-  const [focusedCountryKey, setFocusedCountryKey] = useState<string | null>(null);
-  const [focusUntilMs, setFocusUntilMs] = useState<number | null>(null);
-
-  function focusCountryOnGlobe(countryKey: string) {
-    setFocusedCountryKey(countryKey);
-    setFocusUntilMs(Date.now() + 24_000);
-  }
-
-
   return (
     <main className="experience">
-      <ExperienceMotion />
-      <IntroBillboard />
-
-      <section className="section" data-reveal>
-        <p className="eyebrow">Impacto</p>
-        <div className="impactTitleSplit">
-          <h2>Somos un equipo global</h2>
-          <p className="impactInlineLead">
-            de creativos y estrategas que entiende el poder transformador de una #PowerfulIdea
-          </p>
-        </div>
-        <ImpactGlobe focusCountryKey={focusedCountryKey} focusUntilMs={focusUntilMs} />
-        <div className="statsGrid">
-          {impactStats.map((item) => (
-            <article className="statCard" key={item.label}>
-              <h3>{item.label}</h3>
-              {item.label === "7 Oficinas" ? (
-                <div className="impactFlagsInline" aria-label="7 Oficinas: Colombia, Mexico, Estados Unidos, Panama, Peru, Espana y China">
-                  {IMPACT_FLAG_IMAGES.map((flag) => (
-                    <button
-                      key={flag.key}
-                      type="button"
-                      className="impactFlagButton"
-                      onClick={() => focusCountryOnGlobe(flag.key)}
-                      aria-label={`Centrar globo en ${flag.country} durante 24 segundos`}
-                    >
-                      <Image
-                        src={flag.src}
-                        alt={`Bandera de ${flag.country}`}
-                        width={30}
-                        height={20}
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p>{item.value}</p>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section" data-reveal>
-        <p className="eyebrow">Servicios</p>
-        <h2>Nuestros Servicios</h2>
-        <Services />
-      </section>
+      <HomeClientShell />
 
       <section className="section" data-reveal>
         <p className="eyebrow">Casos</p>

@@ -1,0 +1,27 @@
+
+> tnt-demo-inmersivo@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.2.0
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.5:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 1980ms (1017 modules)
+ GET / 200 in 2661ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1243ms (1021 modules)
+ GET /models/brain_tex.jpg 404 in 1605ms
+ ✓ Compiled in 2.9s (1031 modules)
+ GET / 200 in 288ms
+ GET / 200 in 919ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 670ms (1021 modules)
+ GET /_next/static/chunks/app-pages-internals.js 404 in 1176ms
+ GET /_next/static/css/app/layout.css?v=1774245804226 404 in 1197ms
+ GET /_next/static/chunks/app/page.js 404 in 1166ms
+ GET /_next/static/chunks/main-app.js?v=1774245804226 404 in 1199ms
+ GET /_next/static/chunks/webpack.js?v=1774245804226 404 in 1203ms
+ ✓ Compiled in 671ms (1031 modules)

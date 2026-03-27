@@ -2,24 +2,37 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { geoEquirectangular, geoPath } from "d3-geo";
-import { feature } from "topojson-client";
-import worldLand50m from "world-atlas/land-50m.json";
-
-const COUNTRY_MARKERS = [
-  { key: "colombia", name: "Colombia", lat: 4.5709, lon: -74.2973 },
-  { key: "mexico", name: "Mexico", lat: 23.6345, lon: -102.5528 },
-  { key: "usa", name: "USA", lat: 39.8283, lon: -98.5795 },
-  { key: "panama", name: "Panama", lat: 8.538, lon: -80.7821 },
-  { key: "peru", name: "Peru", lat: -9.19, lon: -75.0152 },
-  { key: "espana", name: "Espana", lat: 40.4637, lon: -3.7492 },
-  { key: "china", name: "China", lat: 35.8617, lon: 104.1954 },
-] as const;
+import { impactCountries } from "../data/tnt-content";
 
 type ImpactGlobeProps = {
   focusCountryKey?: string | null;
   focusUntilMs?: number | null;
+  asBackdrop?: boolean;
 };
+
+type DevicePerfProfile = {
+  pixelRatio: number;
+  globeSegments: number;
+};
+
+function getDevicePerfProfile(): DevicePerfProfile {
+  const dpr = window.devicePixelRatio || 1;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const memory = nav.deviceMemory ?? 4;
+  const lowEndDevice = memory <= 4 || dpr >= 2.5;
+
+  if (lowEndDevice) {
+    return {
+      pixelRatio: Math.min(dpr, 1.6),
+      globeSegments: 96,
+    };
+  }
+
+  return {
+    pixelRatio: Math.min(dpr, 2.25),
+    globeSegments: 112,
+  };
+}
 
 function latLonToSpherePosition(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = THREE.MathUtils.degToRad(90 - lat);
@@ -32,87 +45,11 @@ function latLonToSpherePosition(lat: number, lon: number, radius: number): THREE
   return new THREE.Vector3(x, y, z);
 }
 
-function createContinentsTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 1024;
-
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return new THREE.CanvasTexture(canvas);
-  }
-
-  const width = canvas.width;
-  const height = canvas.height;
-  const source = worldLand50m as unknown as {
-    type: "Topology";
-    objects: { land: unknown };
-  };
-  const landFeature = feature(source as never, source.objects.land as never);
-
-  const projection = geoEquirectangular()
-    .translate([width / 2, height / 2])
-    .scale(width / (2 * Math.PI));
-  const path = geoPath(projection, context);
-
-  // Ocean background
-  const ocean = context.createLinearGradient(0, 0, 0, height);
-  ocean.addColorStop(0, "#13081f");
-  ocean.addColorStop(0.5, "#100818");
-  ocean.addColorStop(1, "#080710");
-  context.fillStyle = ocean;
-  context.fillRect(0, 0, width, height);
-
-  context.fillStyle = "rgba(80, 27, 120, 0.97)";
-  context.beginPath();
-  path(landFeature as never);
-  context.fill("evenodd");
-
-  const landGlow = context.createLinearGradient(0, 0, 0, height);
-  landGlow.addColorStop(0, "rgba(255, 162, 230, 0.22)");
-  landGlow.addColorStop(0.5, "rgba(227, 92, 255, 0.06)");
-  landGlow.addColorStop(1, "rgba(54, 11, 92, 0.2)");
-
-  context.save();
-  context.beginPath();
-  path(landFeature as never);
-  context.clip("evenodd");
-  context.fillStyle = landGlow;
-  context.fillRect(0, 0, width, height);
-  context.restore();
-
-  context.strokeStyle = "rgba(255, 198, 255, 0.48)";
-  context.lineWidth = 1.2;
-  context.beginPath();
-  path(landFeature as never);
-  context.stroke();
-
-  context.strokeStyle = "rgba(255, 242, 255, 0.28)";
-  context.lineWidth = 0.6;
-  context.beginPath();
-  path(landFeature as never);
-  context.stroke();
-
-  const vignette = context.createRadialGradient(
-    width / 2,
-    height / 2,
-    width * 0.12,
-    width / 2,
-    height / 2,
-    width * 0.64,
-  );
-  vignette.addColorStop(0, "rgba(255, 255, 255, 0)");
-  vignette.addColorStop(1, "rgba(0, 0, 0, 0.26)");
-  context.fillStyle = vignette;
-  context.fillRect(0, 0, width, height);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: ImpactGlobeProps) {
+export function ImpactGlobe({
+  focusCountryKey = null,
+  focusUntilMs = null,
+  asBackdrop = false,
+}: ImpactGlobeProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const focusCountryKeyRef = useRef<string | null>(focusCountryKey);
   const focusUntilMsRef = useRef<number | null>(focusUntilMs);
@@ -128,13 +65,14 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     const host = mount;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perfProfile = getDevicePerfProfile();
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0, 5.2);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(perfProfile.pixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -153,69 +91,76 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     scene.add(globeGroup);
 
     const globeRadius = 1.56;
-    const globeGeometry = new THREE.SphereGeometry(globeRadius, 72, 72);
-    const globeTexture = createContinentsTexture();
+    const globeScale = 0.90;
+    const globeOffsetX = 0.9;
+    const globeOffsetY = -0.1;
+    const effectiveGlobeRadius = globeRadius * globeScale;
+    const globeGeometry = new THREE.SphereGeometry(
+      globeRadius,
+      perfProfile.globeSegments,
+      perfProfile.globeSegments,
+    );
+    const globeTexture = new THREE.TextureLoader().load("/textures/impact-continents.svg");
+    globeTexture.colorSpace = THREE.SRGBColorSpace;
     globeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    globeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    globeTexture.magFilter = THREE.LinearFilter;
+    globeTexture.generateMipmaps = true;
+    globeTexture.needsUpdate = true;
 
     const globeMaterial = new THREE.MeshStandardMaterial({
       map: globeTexture,
       color: "#ffffff",
-      emissive: "#13011b",
-      emissiveIntensity: 0.28,
-      roughness: 0.72,
-      metalness: 0.12,
+      emissive: "#5f0f7f",
+      emissiveIntensity: 0.36,
+      roughness: 0.5,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 0.88,
     });
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
     globeGroup.add(globe);
 
-    const markerGeometry = new THREE.SphereGeometry(0.038, 16, 16);
-    const markerMaterial = new THREE.MeshStandardMaterial({
-      color: "#e7f7ff",
-      emissive: "#7ef6ff",
-      emissiveIntensity: 1.2,
-      roughness: 0.25,
-      metalness: 0.1,
-    });
-    const markerGlowGeometry = new THREE.SphereGeometry(0.08, 12, 12);
-    const markerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: "#a9f2ff",
-      transparent: true,
-      opacity: 0.32,
-    });
+    globeGroup.scale.setScalar(globeScale);
+    globeGroup.position.set(globeOffsetX, globeOffsetY, 0);
 
-    COUNTRY_MARKERS.forEach((country) => {
+    // Importar el pin futurista
+    // @ts-ignore
+    const { createFuturisticPinGroup } = require("./futuristic-pin");
+
+    impactCountries.forEach((country) => {
       const position = latLonToSpherePosition(country.lat, country.lon, globeRadius + 0.03);
-
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.copy(position);
-      marker.name = `marker-${country.key}`;
-
-      const glow = new THREE.Mesh(markerGlowGeometry, markerGlowMaterial);
-      glow.position.copy(position);
-
-      globeGroup.add(marker);
-      globeGroup.add(glow);
+      const pin = createFuturisticPinGroup();
+      pin.position.copy(position);
+      pin.lookAt(0, 0, 0); // Que apunte hacia el centro del globo
+      pin.name = `marker-${country.key}`;
+      globeGroup.add(pin);
     });
 
-    const atmosphereGeometry = new THREE.SphereGeometry(1.75, 44, 44);
-    const atmosphereMaterial = new THREE.MeshBasicMaterial({
-      color: "#8cecff",
-      transparent: true,
-      opacity: 0,
-    });
-    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    globeGroup.add(atmosphere);
-
-    const ambient = new THREE.AmbientLight("#82b4ff", 0.8);
+    const ambient = new THREE.AmbientLight("#76ffca", 0.85);
     scene.add(ambient);
 
-    const keyLight = new THREE.DirectionalLight("#7ef6ff", 1.25);
+    const keyLight = new THREE.DirectionalLight("#8dffd8", 1.55);
     keyLight.position.set(2, 1.4, 4);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight("#ca53ff", 1.6);
-    rimLight.position.set(-3, -2, -2);
+    const rimLight = new THREE.DirectionalLight("#39e9ab", 1.2);
+    rimLight.position.set(-3, -1.4, -2);
     scene.add(rimLight);
+
+    const backLight = new THREE.PointLight("#73ffcb", 1.45, 10, 2);
+    backLight.position.set(-1.2, 0.8, -3.8);
+    scene.add(backLight);
+
+    let isVisible = true;
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        isVisible = entry?.isIntersecting ?? true;
+      },
+      { threshold: 0.01 },
+    );
+    visibilityObserver.observe(host);
 
     let pointerDown = false;
     let lastX = 0;
@@ -244,7 +189,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     const returnEuler = new THREE.Euler(0, 0, 0, "YXZ");
     const frontAxis = new THREE.Vector3(0, 0, 1);
     const markerDirectionMap = new Map<string, THREE.Vector3>(
-      COUNTRY_MARKERS.map((country) => [
+      impactCountries.map((country) => [
         country.key,
         latLonToSpherePosition(country.lat, country.lon, 1).normalize(),
       ]),
@@ -262,7 +207,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
       globeCenterNdc.copy(globeCenterWorld).project(camera);
 
       cameraRightWorld.set(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
-      globeEdgeWorld.copy(globeCenterWorld).addScaledVector(cameraRightWorld, globeRadius);
+      globeEdgeWorld.copy(globeCenterWorld).addScaledVector(cameraRightWorld, effectiveGlobeRadius);
       globeEdgeNdc.copy(globeEdgeWorld).project(camera);
 
       const centerX = (globeCenterNdc.x * 0.5 + 0.5) * rect.width;
@@ -279,6 +224,8 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
     }
 
     function onPointerDown(event: PointerEvent) {
+      const isMouseSecondaryButton = event.pointerType === "mouse" && event.button !== 0;
+      if (!event.isPrimary || isMouseSecondaryButton) return;
       pointerDown = true;
       lastX = event.clientX;
       lastY = event.clientY;
@@ -294,8 +241,9 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
       const deltaX = event.clientX - lastX;
       const deltaY = event.clientY - lastY;
 
-      angularVelocityY += deltaX * dragSensitivityY * dragBoost;
-      angularVelocityX += deltaY * dragSensitivityX * dragBoost;
+      // Invertir la dirección del seguimiento de puntero
+      angularVelocityY -= deltaX * dragSensitivityY * dragBoost;
+      angularVelocityX -= deltaY * dragSensitivityX * dragBoost;
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxAngularVelocity, maxAngularVelocity);
       angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxAngularVelocity, maxAngularVelocity);
 
@@ -356,6 +304,10 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
 
     function animate() {
       const now = Date.now();
+      if (!isVisible) {
+        raf = window.requestAnimationFrame(animate);
+        return;
+      }
       const activeFocusCountry = focusCountryKeyRef.current;
       const activeFocusUntil = focusUntilMsRef.current;
       const isFocusMode =
@@ -369,10 +321,14 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
       let autoRotationX = 0;
 
       if (isFocusMode && activeFocusCountry) {
+
         const markerDirection = markerDirectionMap.get(activeFocusCountry);
 
         if (markerDirection) {
-          focusQuaternion.setFromUnitVectors(markerDirection, frontAxis);
+          // Desplazamiento: 20% a la derecha (eje X positivo), 10% arriba (eje Y positivo)
+          const offset = new THREE.Vector3(0.2, 0.1, 0);
+          const targetDirection = markerDirection.clone().add(offset).normalize();
+          focusQuaternion.setFromUnitVectors(targetDirection, frontAxis);
           globeGroup.quaternion.slerp(focusQuaternion, THREE.MathUtils.clamp(0.08 * frameScale, 0, 1));
         }
 
@@ -393,9 +349,10 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
         const followSpeedFactor = reduceMotion ? 0.55 : 1;
         const speed = followRotationMax * followSpeedFactor * Math.max(distance, centerDeadZone);
 
-        autoRotationY += pointerNormX * speed;
-        autoRotationX += -pointerNormY * speed;
-      } else {
+        // Invertir la dirección del seguimiento de puntero (hover)
+        autoRotationY -= pointerNormX * speed;
+        autoRotationX -= -pointerNormY * speed;
+      } else if (!reduceMotion) {
         // Outside the globe area, maintain constant orbital speed: 1 turn / 24s.
         const outsideStep = outsideRotationPerSecond * deltaSeconds;
         angularVelocityY = THREE.MathUtils.lerp(angularVelocityY, outsideStep, 0.14 * frameScale);
@@ -412,7 +369,6 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
 
       globeGroup.rotateY(angularVelocityY);
       globeGroup.rotateX(angularVelocityX);
-
       if (!pointerInside) {
         returnEuler.setFromQuaternion(globeGroup.quaternion, "YXZ");
         returnEuler.x = THREE.MathUtils.lerp(returnEuler.x, 0, THREE.MathUtils.clamp(returnToNorthLerp * frameScale, 0, 1));
@@ -431,6 +387,7 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
 
     return () => {
       window.cancelAnimationFrame(raf);
+      visibilityObserver.disconnect();
       resizeObserver.disconnect();
       host.removeEventListener("pointerenter", onPointerEnter);
       host.removeEventListener("pointerdown", onPointerDown);
@@ -440,20 +397,17 @@ export function ImpactGlobe({ focusCountryKey = null, focusUntilMs = null }: Imp
       host.removeEventListener("pointercancel", onPointerCancel);
       renderer.dispose();
       globeGeometry.dispose();
-      atmosphereGeometry.dispose();
-      markerGeometry.dispose();
-      markerGlowGeometry.dispose();
       globeMaterial.dispose();
-      atmosphereMaterial.dispose();
-      markerMaterial.dispose();
-      markerGlowMaterial.dispose();
+      backLight.dispose();
       globeTexture.dispose();
-      host.removeChild(renderer.domElement);
+      if (renderer.domElement.parentNode === host) {
+        host.removeChild(renderer.domElement);
+      }
     };
   }, []);
 
   return (
-    <div className="impactGlobeWrap">
+    <div className={`impactGlobeWrap${asBackdrop ? " impactGlobeWrapBackdrop" : ""}`}>
       <div className="impactGlobe" ref={mountRef} aria-label="Globo 3D interactivo de 7 oficinas" />
     </div>
   );

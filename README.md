@@ -106,6 +106,494 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Ajustado el desplazamiento del centrado del globe al presionar una bandera: ahora el enfoque se mueve un 20% a la derecha y 10% arriba respecto al pin, para mejorar la visibilidad y composición visual del pin seleccionado (`impact-globe.tsx`).
+- Impacto: El pin seleccionado queda destacado y más visible, evitando que el eje central lo tape y mejorando la experiencia de exploración en desktop y mobile.
+- Proximo paso: Validar en distintos tamaños de pantalla si el desplazamiento es óptimo o requiere ajuste fino.
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Al presionar una bandera, el globe ahora centra el pin correspondiente pero desplazando el enfoque un 20% a la izquierda y 10% abajo respecto al centro visual, modificando la lógica de quaternion en `impact-globe.tsx`.
+- Impacto: El pin seleccionado queda destacado pero no tapado por el eje central del globe, mejorando la visibilidad y la experiencia de exploración.
+- Proximo paso: Validar en pantallas anchas y móviles si el desplazamiento es suficiente o requiere ajuste fino según el tamaño del globe.
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Se redujo el `padding-top` de `.section.servicesSection` en `globals.css` de `4.5rem` a `0.5rem` para acercar la sección de servicios al globe, sin modificar la distribución de la intro ni el impacto.
+- Impacto: El bloque de servicios ahora roza visualmente el globe, reforzando la continuidad narrativa y la inmersión, sin alterar la jerarquía ni el espaciado de las secciones superiores.
+- Proximo paso: Validar en desktop y mobile si el acercamiento es suficiente o requiere microajuste adicional.
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Invertida la dirección del seguimiento de puntero en el globe 3D (`impact-globe.tsx`) para que la rotación siga el movimiento opuesto del mouse/touch, y reemplazo de los pines de oficinas por un diseño futurista (cilindro luminoso y anillo flotante, ver `futuristic-pin.ts`).
+- Impacto: Navegación más intuitiva para usuarios acostumbrados a globos interactivos (dirección invertida), y refuerzo de la estética tecnológica con pines acordes al contexto visual de la página.
+- Proximo paso: Validar la percepción de control y visibilidad de los nuevos pines en desktop y mobile; ajustar tamaño/efecto glow si es necesario.
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Mejora de calidad del archivo local del globe: en `public/textures/impact-continents.svg` se aumento la resolucion intrinseca a `4096x2048` y se activo `shape-rendering="geometricPrecision"`; en `app/components/impact-globe.tsx` se afino el muestreo de textura (`LinearMipmapLinearFilter`, `LinearFilter`, mipmaps y `needsUpdate`).
+- Impacto: Mayor definicion de la silueta de continentes en pantallas grandes, con menos pixelacion perceptible en bordes y mejor suavizado del mapa sobre la esfera.
+- Proximo paso: Validar en monitor 2K/4K si se desea una segunda fase con textura 8K o ajuste de `pixelRatio` high-end para maximo detalle.
+
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Correccion fina en `app/globals.css` del posicionamiento de `Paises impactados` y `7 Oficinas`: se agrego compensacion por solape del titulo (`--impact-title-overlap`) al calculo de `--impact-board-offset-y` en desktop y mobile para evitar ascenso excesivo del bloque.
+- Impacto: La separacion visual entre `Somos un equipo global` y `Paises impactados` queda alineada con la distancia esperada, manteniendo superposicion limpia sobre el globe.
+- Proximo paso: Confirmar en pantalla real si el valor de compensacion requiere microajuste de +/- 4px segun tipografia renderizada por navegador.
+
+- Fecha: 2026-03-27
+- Autor: Copilot
+- Cambio: Ajuste en `app/globals.css` del bloque de etiquetas de Impacto (`Paises impactados` y `7 Oficinas`) para posicionarlas mas arriba, justo debajo de `Somos un equipo global`, usando una separacion vertical vinculada al margen izquierdo (`--agency-inline-margin`) y manteniendo superposicion sobre el globe mediante `z-index` en `.impactStatsBoard`.
+- Impacto: Se refuerza la jerarquia visual solicitada, con etiquetas en primer plano sobre el globo y distancia consistente respecto al titulo en desktop y mobile.
+- Proximo paso: Validar visualmente en viewport intermedio (768-1024px) si requiere microajuste de 8-16px en `--impact-frame-gap`.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Creacion del agente `.github/agents/frontend-inmersivo-3d-senior.agent.md` con lineamientos completos para desarrollo frontend inmersivo institucional (Next.js, React, Three.js, scroll fluido, arquitectura modular, performance 3D, SEO y accesibilidad), y registro en `.github/AGENTS.md`.
+- Impacto: El equipo cuenta con un agente especializado para implementar experiencias inmersivas con foco en conversion, consistencia visual y rendimiento estable en dispositivos de distinta capacidad.
+- Proximo paso: Invocar `frontend-inmersivo-3d-senior` en la siguiente iteracion de UI para estandarizar componentes reutilizables y validar objetivos de FPS/carga inicial.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Optimizacion de runtime 3D en dos frentes: (1) se elimino la generacion dinamica del mapa de continentes en `app/components/impact-globe.tsx` y se reemplazo por textura local precomputada `public/textures/impact-continents.svg` manteniendo el mismo lenguaje visual; (2) en `app/components/services.tsx` se implemento cache de texturas por URL para deduplicar cargas repetidas y evitar trabajo/memoria GPU innecesarios.
+- Impacto: Menor trabajo CPU en primer render del globo, menos picos de bloqueo al refrescar y menor overhead de memoria/texture upload en el bloque Services.
+- Proximo paso: Medir nuevamente performance en DevTools (long tasks/FPS/memoria) y evaluar segunda fase de compresion de modelo 3D (`Brain_Model.fbx` -> glTF + Draco/Meshopt).
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de posicion vertical en `app/globals.css` para las etiquetas/tarjetas de `Paises impactados` y `7 Oficinas`: se incremento el ascenso del bloque (`--impact-board-offset-y`) y se agrego una separacion uniforme (`--impact-frame-gap`) para mantener distancia consistente respecto al titulo `Somos un equipo global`.
+- Impacto: Las etiquetas quedan mas arriba y con una separacion visual estable, alineada con la distancia de marco solicitada.
+- Proximo paso: Revisar visualmente en desktop y mobile si se requiere microajuste final de 8-12px segun composicion en pantalla real.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de alineacion en `app/globals.css` para el bloque Impacto: la tarjeta `Paises impactados` ahora usa el mismo ancho estructural que `7 Oficinas` (`width: min(40rem, 100%)`) para desplazarla hacia la derecha y alinear su centro horizontal con la tarjeta inferior.
+- Impacto: Se corrige el desfase visual entre ambas tarjetas y mejora la lectura vertical del bloque de estadisticas.
+- Proximo paso: Validar en desktop y mobile que el eje de centro se mantenga estable en breakpoints intermedios.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Creacion del agente `.github/agents/optimizador-web-3d-next-senior.agent.md` para optimizacion avanzada de aplicaciones web 3D (JavaScript, Node.js, Three.js y Next.js), incluyendo contexto inicial del proyecto, responsabilidades, enfoque tecnico obligatorio y formato de respuesta estructurado por analisis/optimizacion/codigo/impacto/alternativas; actualizacion del catalogo en `.github/AGENTS.md`.
+- Impacto: El equipo cuenta con un agente especializado en rendimiento 3D y carga inicial que estandariza recomendaciones tecnicas accionables y escalables sin sacrificar funcionalidad.
+- Proximo paso: Invocar el agente en una revision de los componentes `impact-globe`, `services` y `method-brain` para priorizar optimizaciones de mayor ROI.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de estabilidad de runtime en desarrollo en `package.json`: `dev` y `dev:clean` ahora fuerzan limpieza de `.next` antes de `next dev` para eliminar referencias stale de chunks HMR (ej. `Cannot find module './532.js'`); se agrego `dev:turbo` como opcion separada.
+- Impacto: Menor probabilidad de fallos de recarga en caliente y de runtime por artefactos temporales de desarrollo; ciclo de reinicio/refresh mas estable sin flags incompatibles.
+- Proximo paso: Ejecutar 3-5 recargas duras consecutivas en la home para confirmar que no reaparece el error de modulo faltante.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Optimizacion de carga inicial y fluidez al refrescar: en `app/components/home-client-shell.tsx` se implemento `DeferredMount` para montar `Services` y `MethodBrain` solo al aproximarse al viewport, y en `app/components/impact-globe.tsx` se redujo perfil high-end (`textureWidth` 4096->3072, `globeSegments` 128->112).
+- Impacto: Menor trabajo WebGL en el primer render (se evita inicializar escenas 3D fuera de pantalla), disminuye el jank percibido en recarga y mejora la estabilidad de interaccion inicial.
+- Proximo paso: Validar en navegador con Performance panel (CPU 4x throttling) el tiempo a interaccion y confirmar reduccion de long tasks durante los primeros 3-5 segundos.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de causa raiz en `next.config.mjs` para evitar bloqueos al refrescar en desarrollo: CSP ahora distingue dev/prod (habilita `ws/wss`, `worker-src blob:` y recursos necesarios para HMR/WebGL en dev), y `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy` se aplican solo en produccion.
+- Impacto: Se elimina el escenario de pagina "pegada" tras reinicio/refresh por politicas demasiado estrictas en dev y se recupera la carga de componentes 3D durante desarrollo sin debilitar el hardening en produccion.
+- Proximo paso: Verificar en navegador la recarga dura (Ctrl+F5) y revisar consola para confirmar ausencia de violaciones CSP en la home.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Aplicacion de plan de mejora en 4 frentes: (1) refactor de frontera client moviendo la home a Server Component y aislando interactividad en `app/components/home-client-shell.tsx` con carga dinamica de `ImpactGlobe`, `Services` y `MethodBrain`; (2) limpieza de codigo/estilos huerfanos eliminando exports no usados en `app/data/tnt-content.ts`, bloques CSS legacy en `app/globals.css` y el campo no usado `starCount` en `app/components/impact-globe.tsx`; (3) endurecimiento de cabeceras de seguridad en `next.config.mjs`; (4) instrumentacion de errores de carga FBX en `app/components/method-brain.tsx` via `console.error` (no-prod) y evento `tnt:model-load-error`.
+- Impacto: Menor acoplamiento client, mejor base para reducir carga inicial, menor deuda tecnica visual/datos, postura de seguridad HTTP mas robusta y mejor observabilidad de fallos 3D en produccion.
+- Proximo paso: Medir nuevamente First Load JS y Core Web Vitals tras despliegue para cuantificar mejora y priorizar una segunda fase de optimizacion (lazy mount por viewport de escenas 3D).
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de alineacion en `app/globals.css` para el bloque Impacto: la tarjeta `7 Oficinas` se fija al eje izquierdo y alinea su posicion horizontal con la tarjeta/etiqueta de `Paises impactados`, incluyendo override en mobile para evitar centrado automatico.
+- Impacto: Composicion mas consistente entre ambas tarjetas y lectura lineal izquierda en desktop y mobile, aun cuando el layout de seccion tenga margenes internos.
+- Proximo paso: Validar visualmente el eje izquierdo final en viewport <=640px para confirmar si se requiere un desplazamiento adicional negativo que ignore mas margen lateral.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Creacion del agente `revisor-codigo-js-senior` en `.github/agents/revisor-codigo-js-senior.agent.md` con lineamientos completos de code review para JavaScript, Node.js, Next.js, Three.js, seguridad, rendimiento y arquitectura; actualizacion del catalogo en `.github/AGENTS.md`.
+- Impacto: El equipo ahora cuenta con un agente especializado para revisiones de codigo de nivel produccion con formato de salida estandar y enfoque tecnico riguroso.
+- Proximo paso: Invocar el agente en una revision real del proyecto para validar cobertura y ajustar el prompt segun feedback del equipo.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Depuracion de redundancias en codigo: se centralizo la fuente de verdad de paises/flags/coordenadas del bloque Impacto en `app/data/tnt-content.ts`, se actualizo su consumo en `app/page.tsx` y `app/components/impact-globe.tsx`, y se eliminaron componentes no usados (`app/components/method-brain-trimmed.tsx`, `app/components/scroll-journey.tsx`).
+- Impacto: Menor deuda tecnica, menor riesgo de inconsistencias entre UI y globo 3D, y base mas mantenible al evitar duplicidad de datos y archivos huerfanos.
+- Proximo paso: Resolver inconsistencia de contenido entre la metrica "7 Oficinas" y el listado actual de oficinas en datos para alinear narrativa y evidencia.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de alineacion tipografica en tarjetas de Impacto (`app/globals.css`): se centro el texto/contenido de `Paises impactados` y `7 Oficinas`, incluyendo centrado de la fila de banderas.
+- Impacto: Lectura mas simetrica del bloque de estadisticas manteniendo la estructura actual de layout.
+- Proximo paso: Validar si se desea conservar las tarjetas en eje izquierdo con texto centrado o recentrar tambien el contenedor completo en desktop.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de alineacion en bloque Impacto (`app/globals.css`): tarjeta de `Paises impactados` alineada a la izquierda respetando el margen de seccion y tarjeta de `7 Oficinas` posicionada justo debajo en el mismo eje, incluyendo banderas alineadas a la izquierda.
+- Impacto: Mejora de jerarquia y lectura lineal del bloque de estadisticas con composicion consistente al margen izquierdo.
+- Proximo paso: Validar balance visual en mobile para decidir si se mantiene el mismo ancho de tarjeta o se reduce ligeramente en pantallas <= 480px.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste de limpieza visual en `app/components/impact-globe.tsx`: se elimino la capa de estrellas 3D del canvas del globe para evitar artefactos/anillos percibidos alrededor de la esfera.
+- Impacto: El globe queda mas limpio y sin elementos orbitales aparentes en su periferia.
+- Proximo paso: Si se desea recuperar profundidad, usar solo fondo estrellado CSS global sin particulas 3D locales en el bloque de Impacto.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajustes en bloque Impacto para direccion visual solicitada: eliminacion de anillos verdes del globe en `app/components/impact-globe.tsx`, apilado vertical de tarjetas (`7 Oficinas` debajo de `Paises impactados`) y unificacion de tipografia en blanco en `app/globals.css`.
+- Impacto: El globe queda mas limpio, la jerarquia de tarjetas es lineal y el apartado Impacto mantiene contraste uniforme con texto blanco.
+- Proximo paso: Validar en desktop y mobile que el espaciado vertical entre ambas tarjetas siga equilibrado con el fondo del globe.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de interaccion tactil en componentes 3D (`app/components/impact-globe.tsx`, `app/components/services.tsx` y `app/components/method-brain.tsx`): el filtro de `pointerdown` ahora solo descarta boton secundario de mouse, permitiendo entrada touch/pen primaria.
+- Impacto: Se evita que la rotacion/drag de escenas 3D falle en dispositivos tactiles o stylus por validacion demasiado estricta del boton.
+- Proximo paso: Validar en iOS/Android que el gesto vertical de scroll siga conviviendo correctamente con el drag horizontal de cada escena.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de rotacion del globe en `app/globals.css`: se ajusto el enrutamiento de `pointer-events` en las capas superpuestas de Intro/Impacto para permitir que el canvas backdrop reciba eventos de arrastre, manteniendo interaccion en botones de banderas.
+- Impacto: La rotacion/interaccion del globe vuelve a responder al puntero en la zona de Impacto.
+- Proximo paso: Si se requiere, reintroducir interacciones de `IntroBillboard` (glitch al hover) mediante una capa dedicada sin bloquear el globe.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajustes en `app/components/services.tsx` y `app/components/impact-globe.tsx`: se invirtio la direccion de seguimiento horizontal en Services, se cambio el borde de continentes a paleta magenta inspirada en la referencia, y se hicieron los oceanos translucidos eliminando el relleno de fondo en la textura del globe.
+- Impacto: Interaccion de seguimiento alineada con el comportamiento solicitado, lectura visual del mapa mas cercana a la referencia y mayor separacion visual entre continentes y fondo por transparencia del oceano.
+- Proximo paso: Calibrar opacidad final de continente/oceano segun revision en monitores con distinto contraste.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de fondo y visibilidad en `app/globals.css`: se restauro el campo estrellado sobre negro solido usando patrones SVG (sin gradientes de fondo) en `.experience::after` e `.introImpactStage`, y se elimino la superposicion oscura de `.impactGlobe::before` para recuperar claridad de los elementos 3D.
+- Impacto: Se mantienen estrellas visibles, desaparece el tinte de gradiente y el globe/escenas 3D recuperan legibilidad.
+- Proximo paso: Ajustar intensidad del starfield (opacidad 0.7) si se requiere un look mas sobrio en monitores de alto brillo.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Eliminacion de gradientes de fondo remanentes en `app/globals.css` (`.experience::after` e `.introImpactStage`) para usar negro solido puro.
+- Impacto: Fondo uniforme sin variaciones tonales, tal como se solicito.
+- Proximo paso: Si se desea, reintroducir textura no-gradiente (ruido muy sutil) manteniendo base negra solida.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajustes visuales en `app/globals.css`: barra de desplazamiento vertical reemplazada por estilo sutil, separacion visual de la esfera del globe mediante capa de contraste local, y extension del fondo estrellado a secciones iniciales (`introImpactStage`) sobre negro solido.
+- Impacto: Mejor integracion estetica del inicio de pagina, lectura mas clara del globe frente al fondo y UI de scroll menos invasiva.
+- Proximo paso: Ajustar contraste fino del thumb de scroll segun navegador (Chrome/Safari/Firefox) para consistencia total.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correccion de fondo en `app/globals.css`: se elimino la capa de gradientes de `experience::before` para garantizar negro solido detras del campo estrellado.
+- Impacto: El starfield ahora se ve sobre negro uniforme, sin tintes o halos de color no deseados.
+- Proximo paso: Ajustar opacidad de estrellas si se desea mayor contraste en pantallas de alto brillo.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Ajuste del fondo estrellado en `app/globals.css`: se elimino la capa fija en `body` y se movio el starfield a `experience::after` para que acompañe el scroll del contenido; base visual ajustada a negro solido.
+- Impacto: El fondo ya no se percibe estatico respecto al scroll y mantiene mejor contraste visual sobre negro uniforme.
+- Proximo paso: Revisar densidad/escala de estrellas en pantallas ultrawide para conservar balance de composicion.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Se implemento fondo estrellado global en `app/globals.css`, inspirado en la atmosfera del globe, usando capas CSS de estrellas con drift sutil y compatibilidad con `prefers-reduced-motion`.
+- Impacto: Toda la pagina adopta una ambientacion espacial coherente con la narrativa visual del bloque Impacto sin agregar un canvas extra de alto costo.
+- Proximo paso: Ajustar densidad/opacidad de estrellas por breakpoint tras revision visual final en desktop y mobile.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Correcciones funcionales y optimizacion de GPU en `app/components/impact-globe.tsx`, `app/components/services.tsx`, `app/components/method-brain.tsx`, `app/components/smooth-scroll.tsx` y `app/globals.css`: perfil adaptativo de render (pixel ratio/texturas/segmentos), pausa de animacion fuera de viewport, mejor cumplimiento de `prefers-reduced-motion`, ajuste tactil (`touch-action: pan-y pinch-zoom`) y desactivacion de `syncTouch` en Lenis.
+- Impacto: Menor consumo GPU, menos jank en mobile, mejor estabilidad del scroll y continuidad visual de los componentes 3D.
+- Proximo paso: Ejecutar prueba comparativa FPS/tiempo de frame en dispositivo movil objetivo para calibrar umbrales de perfil low-end.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Se simplifico el globe en `app/components/impact-globe.tsx`: eliminada la cuadricula superpuesta (wireframe), removido el halo/sombra palida exterior y reducidos los pines de oficinas a marcadores minimalistas sin haces ni capas extra.
+- Impacto: Visual mas limpio y legible del mapa, con menos ruido grafico y mejor foco en ubicaciones de oficinas.
+- Proximo paso: Afinar tamano/opacidad de marcadores por dispositivo para equilibrar visibilidad en mobile y desktop.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Rediseño del globe de Impacto en `app/components/impact-globe.tsx` con direccion visual inspirada en referencias futuristas: paleta verde neon, continentes en dot-matrix, scanlines, anillos orbitales, campo estelar y marcadores con haces energéticos animados.
+- Impacto: El bloque de Impacto ahora comunica una estetica mas tecnologica e inmersiva, alineada al estilo solicitado para narrativa global.
+- Proximo paso: Ajustar intensidad de glow y densidad de estrellas tras revision visual final con el equipo de marca.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Se incremento el suavizado del scroll en Lenis (`app/components/smooth-scroll.tsx`) y se rediseño el globe con estetica holografica en `app/components/impact-globe.tsx` (paleta cian, wireframe, anillos orbitales, brillo atmosferico y pulso de luz).
+- Impacto: El recorrido se percibe mas fluido y el bloque de Impacto gana una identidad visual futurista mas inmersiva.
+- Proximo paso: Revisar en dispositivos moviles de gama media para ajustar opacidades y velocidad de anillos si se requiere menor carga GPU.
+
+- Fecha: 2026-03-25
+- Autor: Copilot
+- Cambio: Se implemento scroll suave continuo en la home con Lenis (`app/components/smooth-scroll.tsx`), integracion en `app/page.tsx` y reglas base de compatibilidad en `app/globals.css` respetando `prefers-reduced-motion`.
+- Impacto: El desplazamiento deja de sentirse por pasos y mejora la fluidez general de lectura en desktop y mobile.
+- Proximo paso: Ajustar `lerp` y `wheelMultiplier` con validacion de UX en dispositivos de bajo rendimiento.
+
+- Fecha: 2026-03-23
+- Autor: Copilot
+- Cambio: Ajuste de causa-raiz en desplazamiento de textos de Impacto (`app/globals.css`): se unifica el ascenso en `impactStatsBoard` con `position: relative` + `top` negativo y se neutralizan offsets internos de cada tarjeta para evitar compensaciones visuales.
+- Impacto: "Paises impactados" y "7 Oficinas" suben como un bloque de forma evidente y predecible.
+- Proximo paso: Ajustar solo `--impact-board-offset-y` para calibrar altura final sin tocar reglas adicionales.
+
+- Fecha: 2026-03-23
+- Autor: Copilot
+- Cambio: Diagnostico y ajuste de desplazamiento en Impacto (`app/globals.css`): el offset del contenedor `impactStatsBoard` pasa de `transform` a `margin-top` negativo para que el movimiento hacia arriba sea visible en flujo real; se incrementan valores de offset en desktop y mobile.
+- Impacto: Los textos de "Paises impactados" y "7 Oficinas" ahora suben de forma perceptible y estable.
+- Proximo paso: Si necesitas ajuste fino, modificar `--impact-board-offset-y` por breakpoint.
+
+- Fecha: 2026-03-23
+- Autor: Copilot
+- Cambio: Correccion de desplazamiento en tarjetas de Impacto (`app/globals.css`): se agrega offset vertical al contenedor completo `impactStatsBoard` para subir visiblemente ambas tarjetas, manteniendo offsets individuales para ajuste fino.
+- Impacto: El movimiento hacia arriba ahora es claramente perceptible en "Paises impactados" y "7 Oficinas".
+- Proximo paso: Ajustar el valor `--impact-board-offset-y` segun composicion final deseada en desktop/mobile.
+
+- Fecha: 2026-03-23
+- Autor: Copilot
+- Cambio: Correccion de estilos en tarjetas de Impacto (`app/globals.css`): se resolvio el override de fondo/borde de `.statCard` usando selectores de mayor especificidad para `statCardNarrative/statCardOffices`, y se incrementaron offsets verticales negativos para mover ambas tarjetas hacia arriba.
+- Impacto: Las tarjetas quedan efectivamente sin fondo ni borde y se ubican mas arriba sobre el mapa, como se solicito.
+- Proximo paso: Afinar offsets finales por viewport si deseas un encuadre exacto por breakpoint.
+
+- Fecha: 2026-03-23
+- Autor: Copilot
+- Cambio: Ajustes de tarjetas de Impacto en `app/globals.css`: texto de "7 Oficinas" centrado, tarjeta de "7 Oficinas" centrada en la pagina (grid full-width), ampliacion de ancho de "Paises impactados" para mantener la frase de trayectoria en una sola linea, eliminacion de fondo/borde de ambas tarjetas y adicion de offsets manuales por CSS variables para mover cada tarjeta.
+- Impacto: Composicion mas limpia sobre el mapa, lectura central de oficinas y control directo de posicion sin tocar JSX.
+- Proximo paso: Ajustar offsets manuales en revision visual final para cerrar encuadre de arte.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste tipografico en `app/globals.css` para igualar el texto de "7 Oficinas" al mismo tamaño y line-height de "Paises impactados" en desktop y mobile.
+- Impacto: Se unifica la jerarquia visual entre ambos titulares del bloque Impacto.
+- Proximo paso: Validar visualmente si se desea mantener esa igualdad estricta o dejar una variacion ligera por peso visual.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste de escala en tarjetas de Impacto (`app/globals.css`): se reduce 25% el tamaño visual de las tarjetas "Paises impactados" y "7 Oficinas" (tipografia, anchos y espaciados), y se incrementa 20% el tamaño de banderas.
+- Impacto: La composicion queda menos dominante en tarjeta y mas clara en jerarquia, manteniendo las banderas como elemento focal.
+- Proximo paso: Validar balance en desktop wide para confirmar que la tarjeta de oficinas no pierda presencia.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste de jerarquia/alineacion en tarjetas de Impacto en `app/globals.css`: "Paises" e "impactados" pasan a misma escala tipografica y peso, se centra todo el contenido de la tarjeta narrativa, y las banderas del bloque "7 Oficinas" aumentan 30%.
+- Impacto: Mejor legibilidad y consistencia visual con el esquema solicitado, con bloque de oficinas mas protagonista.
+- Proximo paso: Revisar balance en pantallas pequeñas y ajustar solo si el bloque de banderas queda muy dominante.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Reorganizacion de tarjetas de Impacto en `app/page.tsx` y `app/globals.css` con esquema visual tipo referencia: bloque narrativo "Paises impactados" a la izquierda y bloque destacado de "7 Oficinas" con banderas a la derecha.
+- Impacto: La informacion clave se lee con jerarquia mas clara y composicion mas cercana al layout solicitado.
+- Proximo paso: Afinar copy exacto y pesos tipograficos finales segun validacion visual con el equipo de marca.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Reduccion de margenes globales en `app/globals.css` en 25%: se ajusta `--agency-inline-margin` (factor `3` a `2.25`), padding de `.experience` (`5rem/4rem` a `3.75rem/3rem`) y compensacion superior de `.introBillboard` (`-5rem` a `-3.75rem`).
+- Impacto: La pagina queda mas compacta horizontal y verticalmente, incluyendo el borde inferior visual del Intro Billboard por usar la misma variable de margen.
+- Proximo paso: Revisar equilibrio de densidad en mobile para decidir si mantener estos valores o aplicar override por breakpoint.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Refuerzo de nitidez en `app/components/impact-globe.tsx` y `app/components/services.tsx`: supersampling elevado (`pixelRatio` hasta 4x) y textura del mapa del globe aumentada de `2048x1024` a `4096x2048`.
+- Impacto: Los bordes de siluetas y contornos del globe se ven mas definidos que en el ajuste anterior.
+- Proximo paso: Si el costo GPU sube en equipos medios, bajar techo de `pixelRatio` a 3x manteniendo textura 4K.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Mejora de nitidez de bordes en escenas 3D (`app/components/impact-globe.tsx` y `app/components/services.tsx`) incrementando el `pixelRatio` interno del renderer mediante supersampling controlado.
+- Impacto: Las siluetas se perciben mas definidas y con menos aliasing visible, especialmente en bordes curvos y diagonales.
+- Proximo paso: Monitorear FPS en dispositivos de gama media y, si hace falta, reducir el techo de `pixelRatio`.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Mejora de calidad de silueta del globe en `app/components/impact-globe.tsx` duplicando resolucion de malla: esfera principal de `72x72` a `144x144` y atmosfera de `44x44` a `88x88`.
+- Impacto: El contorno del globe se percibe mas suave y definido, especialmente en curvas y bordes de alto contraste.
+- Proximo paso: Validar impacto de rendimiento en dispositivos de gama media y ajustar si es necesario.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste de fondo negro full-bleed en `app/globals.css`: `introImpactStage` ahora usa ancho de viewport completo con compensacion lateral (`100vw` y margenes calculados) para ignorar margenes del layout.
+- Impacto: El fondo negro del bloque Intro/Impacto cubre todo el ancho de pantalla sin cortes laterales.
+- Proximo paso: Verificar en mobile con barra de direccion dinamica si prefieres migrar a `100dvw` para comportamiento mas estricto.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Eliminacion de offsets del render 3D en `app/components/impact-globe.tsx` y `app/globals.css`: `globeOffsetX/globeOffsetY` pasan a `0` y `impactGlobeWrap` deja de usar `translateY`.
+- Impacto: Tanto el globe de Impacto como el canvas de Services quedan sin desplazamiento extra y alineados a su contenedor.
+- Proximo paso: Revisar composicion visual final para decidir si se requiere solo un ajuste fino de escala en vez de offsets.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste fino de escala del globe en `app/components/impact-globe.tsx`: se reduce un 20% adicional el modelo (`globeScale` de 1.4 a 1.12).
+- Impacto: El globe gana aire visual y reduce dominancia en el bloque Intro/Impacto sin alterar su posicion ni el full-bleed lateral.
+- Proximo paso: Validar si se requiere microajuste de offsets para mantener el encuadre ideal tras la nueva escala.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Ajuste de presencia del globe en `app/components/impact-globe.tsx` y `app/globals.css`: se reduce 30% la escala del modelo (`globeScale` de 2 a 1.4) y el modo backdrop pasa a `100vw` centrado para ignorar margenes laterales del layout.
+- Impacto: El globe se ve mas contenido visualmente y mantiene cobertura full-bleed horizontal en Intro/Impacto.
+- Proximo paso: Calibrar `globeOffsetX`/`globeOffsetY` solo si se desea un encuadre artistico distinto tras la reduccion.
+
+- Fecha: 2026-03-22
+- Autor: Copilot
+- Cambio: Correccion de visibilidad del globe backdrop en `app/globals.css`: el fondo negro pasa a `introImpactStage` y se vuelve transparente el fondo de `IntroBillboard` e `ImpactSection` dentro del stage.
+- Impacto: El globe vuelve a ser visible detras del bloque Intro/Impacto manteniendo su posicion y el layering de texto en primer plano.
+- Proximo paso: Validar artisticamente intensidad/contraste del globe tras el cambio de fondos en desktop y mobile.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Correccion de recorte superior y layering del globe entre Intro e Impacto: se ajusta `globeOffsetY` en `app/components/impact-globe.tsx` y se calibra apilado en `app/globals.css` (texto de Intro por encima y `impactGlobeWrap` desplazado visualmente hacia arriba con `transform`, sin tocar flujo de layout).
+- Impacto: El globe ahora cruza visualmente ambas secciones (Intro + Impacto) sin recorte superior perceptible y sin modificar la distribucion actual del texto.
+- Proximo paso: Verificar ajuste fino por breakpoint (especialmente <=640px) para asegurar el mismo encuadre en mobile.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Ajuste puntual en `app/components/impact-globe.tsx` reduciendo `globeOffsetY` para eliminar el recorte superior del globo de Impacto sin modificar alturas, margenes ni distribucion de secciones.
+- Impacto: El globo conserva su composicion general y deja de cortarse en la parte superior; la distribucion de la pagina permanece intacta.
+- Proximo paso: Validar visualmente en desktop y mobile que el encuadre superior se mantenga correcto en todos los breakpoints.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Ajuste de clipping entre Intro e Impacto en `app/globals.css`: se habilita `overflow: visible` en ambos bloques y se ordena el apilado con `z-index` para que el globe pueda continuar visualmente hacia Intro sin alterar su posicion interna.
+- Impacto: Se elimina el corte superior del globe y se mantiene la lectura de `AGENCY WORLDWIDE` por delante.
+- Proximo paso: Validar en mobile y desktop que no aparezcan desbordes no deseados en laterales.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Ajuste de solape Intro/Impacto en `app/globals.css`: `impactGlobeWrap` se desplaza hacia arriba para que el globe de Impacto alcance visualmente el Intro, y se eleva el z-index del texto de `IntroBillboard` para mantener `AGENCY WORLDWIDE` por delante.
+- Impacto: El globe de Impacto ahora se ve detras de las letras del Intro sin acoplar la logica de Services.
+- Proximo paso: Calibrar finamente el offset vertical del globe por breakpoint si se busca encuadre artistico exacto.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Ajuste de composicion en Impacto: globe aumentado a 2x en `app/components/impact-globe.tsx`, desplazado a la derecha/arriba para dejar visibilidad parcial en pantalla, y texto del bloque sobrepuesto al globe ignorando margen derecho mediante estilos de `app/globals.css`.
+- Impacto: El hero de Impacto gana presencia visual del globo con layering de texto encima, sin alterar la seccion de Servicios ni su layout.
+- Proximo paso: Afinar offsets de `globeOffsetX/globeOffsetY` y del solape del titulo segun validacion visual en viewport objetivo.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Eliminacion de la logica de autorrotacion en el componente de Metodo (`app/components/method-brain.tsx`), retirando el incremento automatico de velocidad angular por frame.
+- Impacto: El cerebro 3D ya no gira solo; ahora responde unicamente a interaccion de arrastre del usuario con desaceleracion por inercia.
+- Proximo paso: Si se requiere, agregar control explicito de "Play/Pause" para rotacion automatica opcional.
+
+- Fecha: 2026-03-21
+- Autor: Copilot
+- Cambio: Reemplazo del modelo de cerebro en `public/models/Brain_Model.fbx` exportando desde `Pictures/Brain_Model.blend` (Blender CLI) y eliminacion del modelo antiguo `public/models/brain-open.glb`.
+- Impacto: La seccion Metodo ahora renderiza el cerebro actualizado desde el archivo `.blend` convertido, con limpieza de assets legacy no utilizados.
+- Proximo paso: Validar visualmente proporciones/orientacion del nuevo FBX y, si aplica, eliminar componentes legacy no activos.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Reversion del recorte de cerebro: la home vuelve a consumir `app/components/method-brain.tsx` y se desactiva el trim regional (`ENABLE_REGION_TRIM = false`) para conservar el modelo original completo.
+- Impacto: La seccion Metodo muestra nuevamente el cerebro sin eliminacion de cerebelo/tronco, descartando la variante recortada.
+- Proximo paso: Si se retoma edicion anatomica, hacerlo en DCC (por ejemplo Blender) y exportar un FBX final ya curado.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Refinamiento del recorte en `method-brain-trimmed.tsx` con mascara por ratios `min/max` del bounding box para atacar especificamente el bulto del cerebelo (ademas del tronco), evitando dependencia del centro geometrico.
+- Impacto: El cerebelo queda suprimido de forma mucho mas notoria en vista wireframe, incluso cuando el centro del modelo estaba sesgado por volumen inferior.
+- Proximo paso: Si aun aparece residuo en una orientacion concreta, ajustar solo el umbral `removeCerebellumBulge` segun captura lateral/frontal.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Creacion de nuevo componente `app/components/method-brain-trimmed.tsx` con recorte agresivo de geometria (cerebelo y tronco) y conexion de la seccion Metodo en `app/page.tsx` a esta nueva variante para validacion visual.
+- Impacto: Los cambios de recorte son mas notorios en pantalla y el archivo anterior se conserva intacto para rollback rapido hasta recibir visto bueno.
+- Proximo paso: Tras aprobacion visual del usuario, eliminar el componente antiguo `method-brain.tsx` y consolidar una sola implementacion.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Correccion de pipeline en `MethodBrain`: las lineas `EdgesGeometry` ahora se generan despues del recorte de triangulos del FBX (antes se creaban previo al prune).
+- Impacto: El wireframe visible ya respeta la eliminacion de cerebelo y tronco; se evita mostrar aristas de geometria ya recortada.
+- Proximo paso: Validar en `npm run dev` (cuando el entorno lo permita) y ajustar mascara solo si quedan remanentes anatomicos menores.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Ajuste de `MethodBrain` para eliminar simultaneamente cerebelo y tronco encefalico del wireframe: recorte por coordenadas normalizadas del FBX y retiro de esas piezas en el fallback procedural.
+- Impacto: El render de Metodo mantiene solo los hemisferios en vista wireframe, sin volumen inferior residual cuando rota o cuando entra fallback.
+- Proximo paso: Si deseas un recorte anatomico mas fino, calibrar umbrales de mascara con captura frontal/lateral del modelo final.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Recorte geometrico del FBX en MethodBrain para suprimir visualmente el cerebelo (eliminacion de triangulos en region inferior-posterior central del modelo).
+- Impacto: El cerebro wireframe conserva estabilidad y elimina la prominencia del cerebelo durante toda la rotacion.
+- Proximo paso: Ajustar finamente umbrales del recorte si se requiere preservar mayor volumen del tronco encefalico.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Estabilizacion del wireframe en MethodBrain: lineas de aristas configuradas sin `depthTest/depthWrite` y superficie con `polygonOffset` para eliminar variaciones de lineas por angulo de camara.
+- Impacto: El entramado del cerebro se percibe consistente durante la rotacion, evitando parpadeo/cambios aparentes de topologia por posicion.
+- Proximo paso: Ajustar opacidad final de lineas para balancear legibilidad en pantallas de alto brillo.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Reduccion de densidad visual del wireframe en MethodBrain, migrando de malla triangular completa a aristas seleccionadas con `EdgesGeometry` tanto en el FBX como en el fallback.
+- Impacto: El cerebro conserva lectura tecnica tipo wireframe, pero con lineas mas limpias y menos saturacion visual.
+- Proximo paso: Ajustar el umbral angular de `EdgesGeometry` si se requiere aun menos o mas detalle de linea.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Integracion de modelo local `Pictures/Brain_fbx/Brain_Model.fbx` en `MethodBrain`, publicado como `public/models/Brain_Model.fbx` y cargado con `FBXLoader` en render wireframe.
+- Impacto: El bloque Metodo ahora utiliza el asset FBX provisto por el usuario, manteniendo la visual tecnica en malla y el fallback estable.
+- Proximo paso: Ajustar escala/encuadre final del FBX segun revision visual en entorno dev.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Integracion de modelo GLB de cerebro en `MethodBrain` con render en modo wireframe y fallback wireframe nativo para asegurar visibilidad si falla la carga.
+- Impacto: La seccion Metodo ahora muestra una lectura tecnica de cerebro tipo malla (wireframe), con comportamiento estable y consistente.
+- Proximo paso: Sustituir el asset GLB por el modelo final curado y conservar este pipeline wireframe como preset visual.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Reprogramacion completa de `MethodBrain` desde cero, eliminando la logica previa y reemplazandola por un cerebro 3D procedural viable (hemisferios, cerebelo, tronco y surcos), con interaccion de arrastre y rotacion estable.
+- Impacto: El componente queda tecnicamente mas predecible y visualmente consistente, evitando dependencias externas para mostrar una figura reconocible de cerebro.
+- Proximo paso: Cuando se procese el asset final, sustituir el cerebro procedural por modelo definitivo manteniendo esta base de interaccion y lifecycle seguro.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Fortalecimiento tecnico de MethodBrain: cleanup unificado de recursos Three.js, disposicion de materiales originales reemplazados y guardas contra callbacks asincronos del GLTFLoader tras desmontaje.
+- Impacto: Se reducen fugas de memoria GPU/CPU y condiciones de carrera en runtime, priorizando estabilidad con apariencia visual aceptable.
+- Proximo paso: Medir uso de memoria en sesiones largas de navegacion para confirmar estabilidad sostenida.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Revision de MethodBrain y reemplazo del fallback esferico por un cerebro procedural (hemisferios + pliegues) para garantizar lectura anatomica cuando el GLB no sea util.
+- Impacto: El bloque de Metodo deja de mostrar una esfera rosada y mantiene una silueta de cerebro visible de forma consistente.
+- Proximo paso: Ajustar nivel de detalle de pliegues para equilibrar fidelidad visual y costo GPU en equipos de gama media.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Endurecimiento de carga en MethodBrain: el placeholder no se retira hasta validar que el GLB contiene mallas renderizables y bounds numericos validos.
+- Impacto: Se evita el recuadro vacio cuando el asset 3D carga sin geometria util o con metadata incompatible.
+- Proximo paso: Capturar en consola un warning no bloqueante para diagnosticar assets con mallas invalidas en futuras integraciones.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Revision completa de visibilidad en MethodBrain con placeholder inmediato, forzado de materiales del GLB a configuracion opaca/legible y auto-encuadre de camara por bounding sphere.
+- Impacto: El cerebro permanece visible incluso durante carga o en escenarios de material incompatible, evitando lienzo vacio en la seccion Metodo.
+- Proximo paso: Afinar colorimetria final del material para alinearla al arte de marca sin perder contraste en pantallas de bajo brillo.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Reemplazo del cerebro procedural de Metodo por un modelo GLB real (`public/models/brain-open.glb`) obtenido de repositorio abierto `Justin0Brien/Brain` y renderizado con `GLTFLoader`.
+- Impacto: La seccion de Metodo ahora usa una anatomia 3D mas precisa y consistente visualmente, manteniendo interaccion de rotacion tipo globe.
+- Proximo paso: Revisar direccion de arte del material del GLB y definir nivel final de detalle/performance para dispositivos de gama media.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Integracion de componente 3D en la seccion Metodo, inspirado en la arquitectura del globe pero reemplazando la geometria por un modelo procedural de cerebro interactivo.
+- Impacto: Se refuerza el relato de "¿Cómo pensamos?" con una pieza visual coherente con el lenguaje inmersivo del sitio y diferenciada del bloque de Impacto.
+- Proximo paso: Ajustar direccion de arte del cerebro (tonalidad, profundidad de pliegues y velocidad de rotacion) segun feedback visual final.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Se agrego una nueva seccion entre Servicios y Casos titulada "¿Cómo pensamos?" con tres pilares narrativos del metodo de trabajo.
+- Impacto: Mejora la continuidad del relato entre oferta de servicios y casos, explicando el enfoque estrategico antes de mostrar resultados.
+- Proximo paso: Validar con contenido final de negocio si los pilares y copys deben quedar fijos o volverse editables desde CMS.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Correccion del espacio entre Intro e Impacto aumentando especificidad de estilos (`.section.impactSection` y `.section.servicesSection`) para anular `margin-top` global de secciones.
+- Impacto: Se elimina el hueco con fondo no negro y se mantiene continuidad visual solida en el bloque inicial.
+- Proximo paso: Verificar el empalme en resoluciones ultrawide para confirmar continuidad full-bleed.
+
+- Fecha: 2026-03-20
+- Autor: Copilot
+- Cambio: Ajuste de layout para aplicar fondo negro solido continuo en el tramo inicial (Intro + Impacto), finalizando antes de la seccion Servicios.
+- Impacto: La pagina inicia con un bloque visual mas contundente y uniforme, mejorando contraste y continuidad narrativa hasta el corte previo a Servicios.
+- Proximo paso: Validar en mobile el ritmo vertical entre el cierre de Impacto y la entrada de Servicios para confirmar continuidad visual.
+
 - Fecha: 2026-03-20
 - Autor: Copilot
 - Cambio: Fix de runtime en IntroBillboard para suscripcion de `matchMedia` con fallback compatible (`addEventListener/removeEventListener` y `addListener/removeListener`).

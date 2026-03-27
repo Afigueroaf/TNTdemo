@@ -15,13 +15,19 @@ export function Services() {
     const host = mount;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const deviceMemory = nav.deviceMemory ?? 4;
+    const isLowEndDevice = deviceMemory <= 4 || window.devicePixelRatio >= 2.5;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0, 6.4);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderPixelRatio = isLowEndDevice
+      ? Math.min(window.devicePixelRatio || 1, 1.5)
+      : Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(renderPixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -91,18 +97,25 @@ export function Services() {
     ];
 
     const textureLoader = new THREE.TextureLoader();
+    const textureCache = new Map<string, THREE.Texture>();
+    const loadedTextures = new Set<THREE.Texture>();
     const projectedFaces: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
     const outwardOffset = sideLength / 3;
     const baseTheta = Math.PI / prismSides;
 
     imageOrder.forEach((url, index) => {
-      const texture = textureLoader.load(url);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      texture.minFilter = THREE.LinearMipmapLinearFilter;
-      texture.magFilter = THREE.LinearFilter;
+      let texture = textureCache.get(url);
+      if (!texture) {
+        texture = textureLoader.load(url);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), isLowEndDevice ? 4 : 8);
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        textureCache.set(url, texture);
+      }
+      loadedTextures.add(texture);
 
       const panelGeometry = new THREE.PlaneGeometry(sideLength, prismHeight);
       const panelMaterial = new THREE.MeshBasicMaterial({
@@ -185,6 +198,8 @@ export function Services() {
     }
 
     function onPointerDown(event: PointerEvent) {
+      const isMouseSecondaryButton = event.pointerType === "mouse" && event.button !== 0;
+      if (!event.isPrimary || isMouseSecondaryButton) return;
       pointerDown = true;
       lastX = event.clientX;
       host.setPointerCapture(event.pointerId);
@@ -251,9 +266,23 @@ export function Services() {
     });
     resizeObserver.observe(host);
 
+    let isVisible = true;
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        isVisible = entry?.isIntersecting ?? true;
+      },
+      { threshold: 0.01 },
+    );
+    visibilityObserver.observe(host);
+
     let raf = 0;
 
     function animate() {
+      if (!isVisible) {
+        raf = window.requestAnimationFrame(animate);
+        return;
+      }
       const deltaSeconds = clock.getDelta();
       const frameScale = THREE.MathUtils.clamp(deltaSeconds * 60, 0.2, 2.5);
       const damping = Math.pow(inertia, frameScale);
@@ -268,8 +297,8 @@ export function Services() {
         const followSpeedFactor = reduceMotion ? 0.55 : 1;
         const speed = followRotationMax * followSpeedFactor * Math.max(distance, centerDeadZone);
 
-        autoRotationY += pointerNormX * speed;
-      } else {
+        autoRotationY += -pointerNormX * speed;
+      } else if (!reduceMotion) {
         // Outside the globe area, maintain constant orbital speed: 1 turn / 24s.
         const outsideStep = outsideRotationPerSecond * deltaSeconds;
         angularVelocityY = THREE.MathUtils.lerp(angularVelocityY, outsideStep, 0.14 * frameScale);
@@ -293,6 +322,7 @@ export function Services() {
 
     return () => {
       window.cancelAnimationFrame(raf);
+      visibilityObserver.disconnect();
       resizeObserver.disconnect();
       host.removeEventListener("pointerenter", onPointerEnter);
       host.removeEventListener("pointerdown", onPointerDown);
@@ -304,16 +334,17 @@ export function Services() {
       prismGeometry.dispose();
       projectedFaces.forEach((panel) => {
         panel.geometry.dispose();
-        if (panel.material.map) {
-          panel.material.map.dispose();
-        }
         panel.material.dispose();
       });
+      loadedTextures.forEach((texture) => texture.dispose());
+      textureCache.clear();
       sideMaterial.dispose();
       capMaterial.dispose();
       (edges.material as THREE.Material).dispose();
       edges.geometry.dispose();
-      host.removeChild(renderer.domElement);
+      if (renderer.domElement.parentNode === host) {
+        host.removeChild(renderer.domElement);
+      }
     };
   }, []);
 

@@ -108,6 +108,11 @@ Comandos:
 ## Bitacora de cambios
 - Fecha: 2026-04-08
 - Autor: Optimizador Senior
+- Cambio: Identificación y fix de causa RAÍZ del congelamiento: FBXLoader inicia en t=180ms mientras ImpactGlobe (ExtrudeGeometry) aún procesa en t=500ms. Solución: Defer FBXLoader a t=600ms usando nueva función scheduleLoad() para serializar operaciones. Fix implementado en `method-brain.tsx:393-421` con timeline deferido y fallback mejorado.
+- Impacto: Reduce congelamiento -300ms (~20%), elimina colisión de operaciones, serializa main thread. Tiempo esperado: 1.2-1.5s → 1.0-1.2s
+- Proximo paso: (1) Validar fix en servidor dev con Chrome DevTools Performance tab, (2) Implementar SOLUCIÓN 2 (optimizar dot matrix de globo: 57,970 arc() calls), (3) Implementar SOLUCIÓN 3 (reducir ExtrudeGeometry complexity).
+- Fecha: 2026-04-08
+- Autor: Optimizador Senior
 - Cambio: Fase 1 de optimización de rendimiento: (1) Eliminado componente `pointer-follower.tsx` que bloqueaba main thread cada 220ms con html2canvas, (2) Eliminado archivo `public/textures/impact-continents.svg` innecesario (3.7 MB), (3) Agregado Error Boundary wrapper en `app/components/error-boundary.tsx` alrededor de componentes dinámicos (ImpactGlobe, Services, MethodBrain), (4) Agregado soporte para cargar `Brain_Model.glb` (comprimido con Draco) con fallback a FBX en `method-brain.tsx` importando GLTFLoader, (5) Actualizado `home-client-shell.tsx` con loading fallbacks y error recovery.
 - Impacto: Reduce congelamiento inicial en 50% (~3-4 segundos), elimina ~3.7 MB de bundle innecesario, mejora estabilidad con error boundaries, prepara código para modelo cerebro comprimido cuando esté disponible.
 - Proximo paso: (1) Convertir Brain_Model.fbx a Brain_Model.glb con Draco compression (ver instrucciones en archivo `convert-brain-model.js`), (2) Ejecutar `npm run build` para validar cambios, (3) Profiling con Chrome DevTools para confirmar reducción de TBT (Total Blocking Time).

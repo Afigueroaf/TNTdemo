@@ -331,7 +331,7 @@ export function ImpactGlobe({
 
     const pinsGroup = new THREE.Group();
     globeGroup.add(pinsGroup);
-    let disposePinPrototype = () => {};
+    let disposePinPrototype: (() => void) | null = null;
     let isUnmounted = false;
 
     createLogoPinPrototype(perfProfile.lowEndDevice)
@@ -356,9 +356,20 @@ export function ImpactGlobe({
         });
       })
       .catch((error) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("[ImpactGlobe] No se pudo cargar el SVG de pins", error);
-        }
+        if (isUnmounted) return;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ImpactGlobe] Error cargando pins del logo", { error, message });
+        // Dispatch event para que componentes sepan que hubo error
+        window.dispatchEvent(
+          new CustomEvent("tnt:component-error", {
+            detail: {
+              component: "ImpactGlobe",
+              resource: "logo-pins",
+              message,
+              timestamp: Date.now(),
+            },
+          })
+        );
       });
 
     const ambient = new THREE.AmbientLight("#76ffca", 0.85);
@@ -632,7 +643,13 @@ export function ImpactGlobe({
       renderer.dispose();
       globeGeometry.dispose();
       globeMaterial.dispose();
-      disposePinPrototype();
+      if (disposePinPrototype) {
+        disposePinPrototype();
+      }
+      // Dispose all lights (FIX: evitar memory leak)
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
       backLight.dispose();
       globeTexture.dispose();
       if (renderer.domElement.parentNode === host) {

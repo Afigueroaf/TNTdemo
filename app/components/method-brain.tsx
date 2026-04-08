@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.5;
@@ -270,7 +269,6 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     }
 
     const fbxLoader = new FBXLoader();
-    const gltfLoader = new GLTFLoader();
     const leftWireMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
     const rightWireMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
 
@@ -366,27 +364,17 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     };
 
     const loadModel = () => {
-      // Intenta cargar GLB primero (comprimido) luego fallback a FBX
-      gltfLoader.load(
-        "/models/Brain_Model.glb",
-        (gltf) => {
-          processLoadedModel(gltf.scene);
+      // Cargar FBX directo (GLB se intentará después cuando esté disponible)
+      fbxLoader.load(
+        "/models/Brain_Model.fbx",
+        (object) => {
+          processLoadedModel(object);
         },
         undefined,
-        () => {
-          // Si GLB no existe, intenta FBX
-          fbxLoader.load(
-            "/models/Brain_Model.fbx",
-            (object) => {
-              processLoadedModel(object);
-            },
-            undefined,
-            (error) => {
-              if (isUnmounted) return;
-              reportModelLoadError(error);
-            },
-          );
-        }
+        (error) => {
+          if (isUnmounted) return;
+          reportModelLoadError(error);
+        },
       );
     };
 
@@ -567,6 +555,10 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
 
       leftWireMaterial.dispose();
       rightWireMaterial.dispose();
+      // Dispose all lights (FIX: evitar memory leak)
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === host) {
         host.removeChild(renderer.domElement);

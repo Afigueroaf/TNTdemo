@@ -111,7 +111,26 @@ export function Services() {
     imageOrder.forEach((url, index) => {
       let texture = textureCache.get(url);
       if (!texture) {
-        texture = textureLoader.load(url);
+        texture = textureLoader.load(
+          url,
+          undefined,
+          undefined,
+          (error) => {
+            // Error loading texture
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("[Services] Error cargando textura", { url, message });
+            window.dispatchEvent(
+              new CustomEvent("tnt:component-error", {
+                detail: {
+                  component: "Services",
+                  resource: `texture-${url}`,
+                  message,
+                  timestamp: Date.now(),
+                },
+              })
+            );
+          }
+        );
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), isLowEndDevice ? 4 : 8);
         texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -362,6 +381,10 @@ export function Services() {
       capMaterial.dispose();
       (edges.material as THREE.Material).dispose();
       edges.geometry.dispose();
+      // Dispose all lights (FIX: evitar memory leak)
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
       if (renderer.domElement.parentNode === host) {
         host.removeChild(renderer.domElement);
       }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { ErrorTrackingInitializer } from "./error-tracking-initializer";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -21,7 +22,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={montserrat.variable}>{children}</body>
+      <body className={montserrat.variable}>
+        <ErrorTrackingInitializer />
+        {children}
+      </body>
     </html>
   );
 }

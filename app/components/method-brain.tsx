@@ -377,23 +377,33 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
           processLoadedModel(gltf.scene);
         },
         undefined,
-        () => {
-          // GLB not found, fallback to FBX
+        (error) => {
+          // GLB loading error - could be texture issue or file not found
           if (isUnmounted) return;
-          console.log("⚠️  Brain Model GLB not found, using FBX fallback");
-          fbxLoader.load(
-            "/models/Brain_Model.fbx",
-            (object) => {
-              if (isUnmounted) return;
-              console.log("✅ Brain Model loaded from FBX");
-              processLoadedModel(object);
-            },
-            undefined,
-            (error) => {
-              if (isUnmounted) return;
-              reportModelLoadError(error);
-            },
-          );
+          
+          // Check if error is just a missing texture (still continue)
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          if (errorMsg.includes("texture") || errorMsg.includes("Couldn't load")) {
+            // Texture error but model loaded - this is acceptable
+            console.warn("⚠️  Brain Model: Texture error but attempting to continue with GLB");
+            // Don't fallback to FBX for texture errors, just report
+          } else {
+            // Actual GLB file not found or other error, fallback to FBX
+            console.log("⚠️  Brain Model GLB not found or error, using FBX fallback");
+            fbxLoader.load(
+              "/models/Brain_Model.fbx",
+              (object) => {
+                if (isUnmounted) return;
+                console.log("✅ Brain Model loaded from FBX");
+                processLoadedModel(object);
+              },
+              undefined,
+              (error) => {
+                if (isUnmounted) return;
+                reportModelLoadError(error);
+              },
+            );
+          }
         },
       );
     };

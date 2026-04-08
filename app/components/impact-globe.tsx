@@ -72,14 +72,12 @@ async function createLogoPinPrototype(lowEndDevice: boolean) {
   });
 
   const logoGeometries: THREE.ExtrudeGeometry[] = [];
-  const extrudeSettings = {
-    depth: lowEndDevice ? 10 : 13,
-    bevelEnabled: true,
-    bevelThickness: lowEndDevice ? 1.2 : 1.6,
-    bevelSize: lowEndDevice ? 0.8 : 1,
-    bevelSegments: lowEndDevice ? 1 : 2,
-    curveSegments: lowEndDevice ? 8 : 12,
-  } as const;
+  // Phase 3.2: Disable bevel to reduce geometry complexity (expected: -60ms)
+   const extrudeSettings = {
+     depth: lowEndDevice ? 10 : 13,
+     bevelEnabled: false,
+     curveSegments: lowEndDevice ? 8 : 12,
+   } as const;
 
   const whiteStrokePaths = svgData.paths.filter((path) => {
     const style = (path.userData as { style?: { stroke?: string } } | undefined)?.style;
@@ -211,16 +209,17 @@ function createContinentsTexture(textureWidth: number): THREE.CanvasTexture {
   context.clip("evenodd");
   context.fillStyle = "rgba(255, 112, 238, 0.52)";
 
-  const dotGap = Math.max(7, Math.floor(width / 330));
-  const dotRadius = Math.max(1.1, dotGap * 0.19);
-  for (let y = 0; y < height; y += dotGap) {
-    const offset = (Math.floor(y / dotGap) % 2) * (dotGap * 0.5);
-    for (let x = offset; x < width; x += dotGap) {
-      context.beginPath();
-      context.arc(x, y, dotRadius, 0, Math.PI * 2);
-      context.fill();
-    }
-  }
+  // Phase 3.1: Increase dot gap to reduce vertex count (expected: -50ms)
+   const dotGap = Math.max(14, Math.floor(width / 165));
+   const dotRadius = Math.max(1.1, dotGap * 0.19);
+   for (let y = 0; y < height; y += dotGap) {
+     const offset = (Math.floor(y / dotGap) % 2) * (dotGap * 0.5);
+     for (let x = offset; x < width; x += dotGap) {
+       context.beginPath();
+       context.arc(x, y, dotRadius, 0, Math.PI * 2);
+       context.fill();
+     }
+   }
   context.restore();
 
   // Soft edge only inside land areas to keep oceans transparent.

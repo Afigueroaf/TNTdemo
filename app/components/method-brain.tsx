@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.5;
@@ -268,7 +269,6 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       }));
     }
 
-    const fbxLoader = new FBXLoader();
     const leftWireMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
     const rightWireMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
 
@@ -364,16 +364,36 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     };
 
     const loadModel = () => {
-      // Cargar FBX directo (GLB se intentará después cuando esté disponible)
-      fbxLoader.load(
-        "/models/Brain_Model.fbx",
-        (object) => {
-          processLoadedModel(object);
+      const gltfLoader = new GLTFLoader();
+      const fbxLoader = new FBXLoader();
+
+      // Phase 3.5: Try loading GLB first (compressed, ~300KB)
+      // Fallback to FBX if GLB not available (~2.6MB)
+      gltfLoader.load(
+        "/models/Brain_Model.glb",
+        (gltf) => {
+          if (isUnmounted) return;
+          console.log("✅ Brain Model loaded from GLB (compressed)");
+          processLoadedModel(gltf.scene);
         },
         undefined,
-        (error) => {
+        () => {
+          // GLB not found, fallback to FBX
           if (isUnmounted) return;
-          reportModelLoadError(error);
+          console.log("⚠️  Brain Model GLB not found, using FBX fallback");
+          fbxLoader.load(
+            "/models/Brain_Model.fbx",
+            (object) => {
+              if (isUnmounted) return;
+              console.log("✅ Brain Model loaded from FBX");
+              processLoadedModel(object);
+            },
+            undefined,
+            (error) => {
+              if (isUnmounted) return;
+              reportModelLoadError(error);
+            },
+          );
         },
       );
     };

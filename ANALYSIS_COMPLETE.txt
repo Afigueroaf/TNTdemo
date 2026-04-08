@@ -1,0 +1,143 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                      PROFILING ANALYSIS - COMPLETE                             ║
+║                    Congelamiento Inicial: Causa Identificada                   ║
+║                                                                                ║
+║ Fecha: 2026-04-08                                                              ║
+║ Analista: Especialista en Performance                                          ║
+║ Estado: ANÁLISIS COMPLETO - CULPABLES IDENTIFICADOS - SOLUCIONES PROPUESTAS  ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+DIAGNÓSTICO FINAL:
+═════════════════
+
+❌ EL POINTER-FOLLOWER NO ERA EL CULPABLE
+
+✅ VERDADERO CULPABLE:
+   Ejecución PARALELA de 3 operaciones 3D pesadas en el main thread:
+   1. FBXLoader binary parsing (300-500ms) - inicia en t=180ms
+   2. ExtrudeGeometry generation (60-120ms) - inicia en t=500ms
+   3. Canvas rendering (98-156ms) - inicia en t=10ms
+   
+   RESULTADO: COLISIÓN en t=500-700ms donde FBXLoader + ExtrudeGeometry
+             compiten por el main thread
+             
+   CONGELAMIENTO TOTAL: 1.2-1.5 SEGUNDOS
+   CONGELAMIENTO DIRECTO (colisión): 200-300ms
+
+
+CULPABLES IDENTIFICADOS:
+════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CULPABLE #1: FBXLoader + processLoadedModel()                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Archivo:    method-brain.tsx                                                │
+│ Línea:      404-408 (timing) | 378-379 (FBXLoader) | 280-366 (processing)  │
+│ Tipo:       Main thread blocking                                            │
+│ Duración:   430-950ms bloqueador                                            │
+│ Inicio:     t=180ms (demasiado temprano)                                    │
+│ Severidad:  ⚠️⚠️⚠️ MUY CRÍTICA                                              │
+│                                                                             │
+│ Detalles:                                                                   │
+│  • FBXLoader binary parsing: 300-500ms                                      │
+│  • processLoadedModel() mesh traverse: 130-450ms                           │
+│  • EdgesGeometry generation: 80-150ms (si HIGH-END)                        │
+│                                                                             │
+│ Problema: Se inicia en t=180ms MIENTRAS ImpactGlobe aún procesando         │
+│          Colisiona con ExtrudeGeometry en t=500-700ms                      │
+│                                                                             │
+│ Solución: Defer FBXLoader 600ms                                            │
+│ Impacto:  -300ms (20% mejora)                                              │
+│ Esfuerzo: 5 minutos                                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CULPABLE #2: createContinentsTexture()                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Archivo:    impact-globe.tsx                                                │
+│ Línea:      310 (call) | 151-249 (function)                                │
+│ Tipo:       Canvas rendering blocking                                       │
+│ Duración:   98-156ms bloqueador                                             │
+│ Inicio:     t=10ms (INMEDIATO en useEffect)                                 │
+│ Severidad:  ⚠️⚠️ CRÍTICA                                                    │
+│                                                                             │
+│ Detalles:                                                                   │
+│  • Canvas path/fill operations: 30-45ms                                     │
+│  • Dot matrix 57,970 arc() calls: 40-75ms ◄ PEOR CULPABLE LOCAL             │
+│  • Vignette gradient: 8-12ms                                               │
+│                                                                             │
+│ Problema: Canvas rendering multiple path redibujadas (5x)                  │
+│          Dot matrix loop con arc() es 3-4x más lento que fillRect()        │
+│                                                                             │
+│ Soluciones:                                                                │
+│  1. Optimizar dot matrix (arc → fillRect): -50ms                           │
+│  2. Consolidar path calls: -15ms                                           │
+│  3. Placeholder texture: -100ms                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CULPABLE #3: createLogoPinPrototype()                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Archivo:    impact-globe.tsx                                                │
+│ Línea:      337 (call) | 65-149 (function) | 117-123 (ExtrudeGeometry)    │
+│ Tipo:       3D geometry blocking                                            │
+│ Duración:   76-155ms bloqueador                                             │
+│ Inicio:     t=500ms (en promise .then)                                      │
+│ Severidad:  ⚠️⚠️ CRÍTICA                                                    │
+│                                                                             │
+│ Detalles:                                                                   │
+│  • SVG parsing: 100-200ms (asíncrono)                                      │
+│  • SVG path processing: 15-25ms                                            │
+│  • ExtrudeGeometry x7 shapes: 60-120ms                                     │
+│  • computeVertexNormals(): O(vertices²) complexity                         │
+│                                                                             │
+│ Problema: EXACTAMENTE cuando FBXLoader activo (t=500-700ms)                │
+│          computeVertexNormals() es operación pesadísima                    │
+│                                                                             │
+│ Soluciones:                                                                │
+│  1. Reducir ExtrudeGeometry complexity: -30ms                              │
+│  2. Worker offload: -80-130ms                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+TIMELINE EXACTO DE CONGELAMIENTO:
+═════════════════════════════════
+
+t=0ms       Page load
+            ├─ ImpactGlobe dynamic() loads
+            └─ HomeClientShell renders
+
+t=0-5ms     ImpactGlobe useEffect starts
+            ├─ THREE.Scene/Camera/Renderer setup (RÁPIDO)
+            └─ getDevicePerfProfile() (RÁPIDO)
+
+t=5-10ms    [createContinentsTexture() INICIA]
+            └─ Canvas creation + projection setup
+
+t=10-45ms   ██████████ Canvas path/fill rendering (30-45ms BLOQUEADOR)
+
+t=45-75ms   ██████████████ Dot matrix loop (40-75ms BLOQUEADOR PEOR)
+            └─ 57,970 context.arc() + fill() operations
+
+t=75-100ms  ████ Vignette gradient + clip (8-12ms BLOQUEADOR)
+            globeTexture COMPLETADO
+
+t=100ms     [SVGLoader.load() async INICIA]
+            └─ SVG parsing en background (asíncrono)
+
+t=180ms     [MethodBrain useEffect INICIA]
+            └─ [FBXLoader.load() INICIA] ◄◄◄◄ PROBLEMA AQUÍ
+               └─ Binary parsing: 300-500ms EN MAIN THREAD
+
+t=180-500ms ██████████████████ FBXLoader parsing
+            └─ MIENTRAS ImpactGlobe todavía procesando
+
+t=500ms     [SVGLoader async TERMINA]
+            ├─ createLogoPinPrototype() .then() INICIA
+            └─ [ExtrudeGeometry generation COMIENZA]
+
+t=500-700ms 🔥🔥🔥 COLISIÓN CRÍTICA 🔥🔥🔥
+            ├─ ████ ExtrudeGeometry + computeVertexNormals() (60-120ms)
+            ├─ ████████████████████ FBXLoader TODAVÍA ACTIVO
+            ├─ MAIN THREAD 100

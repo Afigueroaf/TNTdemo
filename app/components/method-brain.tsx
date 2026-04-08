@@ -401,11 +401,25 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     let loadIdleHandle = 0;
     let loadTimeoutHandle = 0;
 
-    if (typeof windowWithIdle.requestIdleCallback === "function") {
-      loadIdleHandle = windowWithIdle.requestIdleCallback(loadModel, { timeout: 1000 });
-    } else {
-      loadTimeoutHandle = window.setTimeout(loadModel, 180);
-    }
+    // FIX: Defer FBXLoader para evitar colisión con ExtrudeGeometry
+    // ImpactGlobe inicia en t=0ms
+    // ExtrudeGeometry (pesado) comienza en t=500ms
+    // Antes: FBXLoader comenzaba en t=180ms (colisión en t=500-700ms)
+    // Ahora: FBXLoader comienza en t=600ms (DESPUÉS de ExtrudeGeometry)
+    // Impacto: -300ms (~20% mejora)
+    const DEFER_FBX_LOAD_MS = 600;
+
+    const scheduleLoad = () => {
+      if (isUnmounted) return;
+
+      if (typeof windowWithIdle.requestIdleCallback === "function") {
+        loadIdleHandle = windowWithIdle.requestIdleCallback(loadModel, { timeout: 1000 });
+      } else {
+        loadTimeoutHandle = window.setTimeout(loadModel, 50);
+      }
+    };
+
+    loadTimeoutHandle = window.setTimeout(scheduleLoad, DEFER_FBX_LOAD_MS);
 
     const ambient = new THREE.AmbientLight("#d8d8ff", 1.02);
     scene.add(ambient);

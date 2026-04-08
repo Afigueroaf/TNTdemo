@@ -21,24 +21,6 @@ const MethodBrain = dynamic(
   { ssr: false },
 );
 
-const THINKING_PILLARS = [
-  {
-    title: "Escucha activa",
-    description:
-      "Partimos del contexto real de marca, audiencia y territorio para definir oportunidades con impacto medible.",
-  },
-  {
-    title: "Estrategia creativa",
-    description:
-      "Traducimos hallazgos en una idea rectora que alinea narrativa, canales y experiencia en cada punto de contacto.",
-  },
-  {
-    title: "Ejecucion con aprendizaje",
-    description:
-      "Iteramos con datos, validamos decisiones y optimizamos para sostener resultados en el tiempo.",
-  },
-] as const;
-
 function DeferredMount({
   children,
   placeholderClassName,
@@ -86,9 +68,29 @@ export function HomeClientShell() {
   const trajectoryStat = impactStats.find((item) => item.label === "Trayectoria");
   const teamStat = impactStats.find((item) => item.label === "Equipo");
 
+  // Tracks whether the current focus was triggered by hover (vs. click)
+  const focusSourceRef = useRef<"hover" | "click" | null>(null);
+
   function focusCountryOnGlobe(countryKey: string) {
+    focusSourceRef.current = "click";
     setFocusedCountryKey(countryKey);
     setFocusUntilMs(Date.now() + 24_000);
+  }
+
+  function hoverFocusCountry(countryKey: string) {
+    focusSourceRef.current = "hover";
+    setFocusedCountryKey(countryKey);
+    // Large value keeps the globe centered as long as the cursor stays on the flag
+    setFocusUntilMs(Date.now() + 600_000);
+  }
+
+  function hoverBlurCountry() {
+    // Only cancel if the focus was triggered by hover, not by a click
+    if (focusSourceRef.current === "hover") {
+      focusSourceRef.current = null;
+      setFocusedCountryKey(null);
+      setFocusUntilMs(null);
+    }
   }
 
   return (
@@ -130,6 +132,8 @@ export function HomeClientShell() {
                     type="button"
                     className="impactFlagButton"
                     onClick={() => focusCountryOnGlobe(flag.key)}
+                    onMouseEnter={() => hoverFocusCountry(flag.key)}
+                    onMouseLeave={() => hoverBlurCountry()}
                     aria-label={`Centrar globo en ${flag.country} durante 24 segundos`}
                   >
                     <Image
@@ -149,26 +153,19 @@ export function HomeClientShell() {
 
       <section className="section servicesSection" data-reveal>
         <p className="eyebrow">Servicios</p>
-        <h2>Nuestros Servicios</h2>
+        <h2><span>Nuestros Servicios</span></h2>
         <DeferredMount placeholderClassName="scenePlaceholder scenePlaceholderServices">
           <Services />
         </DeferredMount>
       </section>
 
-      <section className="section" data-reveal>
+      <section className="section methodSection" data-reveal>
+        <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
+          <MethodBrain asBackdrop />
+        </DeferredMount>
         <p className="eyebrow">Metodo</p>
         <h2>¿Cómo pensamos?</h2>
-        <DeferredMount placeholderClassName="scenePlaceholder scenePlaceholderMethod">
-          <MethodBrain />
-        </DeferredMount>
-        <div className="cardsGrid">
-          {THINKING_PILLARS.map((pillar) => (
-            <article className="card" key={pillar.title}>
-              <h3>{pillar.title}</h3>
-              <p>{pillar.description}</p>
-            </article>
-          ))}
-        </div>
+        <div className="methodBrainSpacer" aria-hidden />
       </section>
     </>
   );

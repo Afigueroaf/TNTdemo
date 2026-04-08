@@ -23,7 +23,11 @@ export function Services() {
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0, 6.4);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isLowEndDevice,
+      alpha: true,
+      powerPreference: isLowEndDevice ? "low-power" : "high-performance",
+    });
     const renderPixelRatio = isLowEndDevice
       ? Math.min(window.devicePixelRatio || 1, 1.5)
       : Math.min(window.devicePixelRatio || 1, 2);
@@ -46,10 +50,12 @@ export function Services() {
     scene.add(prismGroup);
 
     // Prisma octagonal vertical (8 caras, eje Y).
-    const prismSides = 8;
+    const prismSides = isLowEndDevice ? 6 : 8;
     // Face ratio target based on source art: 416 / 630.
     const imageAspectRatio = 416 / 630;
-    const prismHeight = 2.585;
+    const prismScale = 1.2825;
+    const prismHeight = 2.068 * prismScale;
+    const prismOffsetY = -prismHeight * 0.1;
     const prismRadius = (prismHeight * imageAspectRatio) / (2 * Math.sin(Math.PI / prismSides));
     const prismGeometry = new THREE.CylinderGeometry(prismRadius, prismRadius, prismHeight, prismSides, 1, false);
     const sideLength = 2 * prismRadius * Math.sin(Math.PI / prismSides);
@@ -77,6 +83,8 @@ export function Services() {
     prism.renderOrder = 1;
     prismGroup.add(prism);
 
+    prismGroup.position.y = prismOffsetY;
+
     const edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(prismGeometry),
       new THREE.LineBasicMaterial({ color: "#d7b0ff", transparent: true, opacity: 0.45 }),
@@ -85,16 +93,13 @@ export function Services() {
     edges.renderOrder = 2;
     prismGroup.add(edges);
 
-    const imageOrder = [
-      brandingHome.src,
-      creatividadHome.src,
-      marketingExperiencialHome.src,
-      marketingDigitalHome.src,
+    const imagePool = [
       brandingHome.src,
       creatividadHome.src,
       marketingExperiencialHome.src,
       marketingDigitalHome.src,
     ];
+    const imageOrder = Array.from({ length: prismSides }, (_, index) => imagePool[index % imagePool.length]);
 
     const textureLoader = new THREE.TextureLoader();
     const textureCache = new Map<string, THREE.Texture>();
@@ -164,7 +169,8 @@ export function Services() {
     const maxAngularVelocity = 0.016;
     const inertia = 0.94;
     const outsideRotationPerSecond = (Math.PI * 2) / 24;
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
+    timer.connect(document);
     const prismCenterWorld = new THREE.Vector3();
     const prismCenterNdc = new THREE.Vector3();
     const prismEdgeWorld = new THREE.Vector3();
@@ -277,13 +283,25 @@ export function Services() {
     visibilityObserver.observe(host);
 
     let raf = 0;
+    let hiddenFrameTimeout = 0;
+
+    function scheduleNextFrame(hidden = false) {
+      if (hidden) {
+        hiddenFrameTimeout = window.setTimeout(() => {
+          raf = window.requestAnimationFrame(animate);
+        }, 160);
+        return;
+      }
+      raf = window.requestAnimationFrame(animate);
+    }
 
     function animate() {
       if (!isVisible) {
-        raf = window.requestAnimationFrame(animate);
+        scheduleNextFrame(true);
         return;
       }
-      const deltaSeconds = clock.getDelta();
+      timer.update();
+      const deltaSeconds = timer.getDelta();
       const frameScale = THREE.MathUtils.clamp(deltaSeconds * 60, 0.2, 2.5);
       const damping = Math.pow(inertia, frameScale);
       let autoRotationY = 0;
@@ -315,13 +333,14 @@ export function Services() {
       angularVelocityY *= damping;
 
       renderer.render(scene, camera);
-      raf = window.requestAnimationFrame(animate);
+      scheduleNextFrame();
     }
 
     animate();
 
     return () => {
       window.cancelAnimationFrame(raf);
+      window.clearTimeout(hiddenFrameTimeout);
       visibilityObserver.disconnect();
       resizeObserver.disconnect();
       host.removeEventListener("pointerenter", onPointerEnter);
@@ -330,6 +349,7 @@ export function Services() {
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointerleave", onPointerLeave);
       host.removeEventListener("pointercancel", onPointerCancel);
+      timer.dispose();
       renderer.dispose();
       prismGeometry.dispose();
       projectedFaces.forEach((panel) => {

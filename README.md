@@ -106,6 +106,321 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-04-06
+- Autor: Copilot
+- Cambio: Se corrigio el anclaje de la estela en `app/components/pointer-trail.tsx` para que quede fija al contenido de la pagina y no al viewport. Ahora los puntos se guardan en coordenadas de documento (`client + scroll`) y el shader compensa el scroll actual con el uniforme `uScroll`.
+- Impacto: Al hacer scroll, la estela se mueve junto con la pagina y mantiene su posicion relativa sobre el contenido.
+- Proximo paso: Si se observa jitter en scrolls muy agresivos, suavizar la lectura de `uScroll` con interpolacion ligera.
+- Fecha: 2026-04-06
+- Autor: Copilot
+- Cambio: Se ajusto la estela del cursor en `app/components/pointer-trail.tsx` aumentando su opacidad maxima a `0.7` y reduciendo su duracion a `4` segundos (`TRAIL_LIFETIME_SECONDS = 4`).
+- Impacto: La estela se percibe mas intensa visualmente y se limpia mucho mas rapido, reduciendo saturacion acumulada en pantalla.
+- Proximo paso: Si se desea un punto intermedio, probar opacidad entre `0.6` y `0.65`.
+- Fecha: 2026-04-06
+- Autor: Copilot
+- Cambio: Se ajusto la estela del cursor en `app/components/pointer-trail.tsx` reduciendo su tamano al 60% del valor actual (`TRAIL_SIZE_SCALE = 0.6`) y aumentando su opacidad maxima al 50% en el shader (`TRAIL_ALPHA_MAX = 0.5`).
+- Impacto: La estela ocupa menos area visual y gana presencia luminosa, mejorando legibilidad del contenido sin perder el look glitch.
+- Proximo paso: Si se requiere un balance mas fino, ajustar `TRAIL_ALPHA_MAX` entre 0.45 y 0.55 segun contraste de cada seccion.
+- Fecha: 2026-04-06
+- Autor: Copilot
+- Cambio: Se corrigio la estela del cursor en `app/components/pointer-trail.tsx` para que cada sello use el mismo diametro del seguidor (`clamp(330px, 32.25vw, 510px)`), con ajuste responsivo en resize y control por limite de `ALIASED_POINT_SIZE_RANGE` del GPU.
+- Impacto: La estela ahora conserva la misma escala visual del efecto principal de seguimiento durante su persistencia de 15 segundos.
+- Proximo paso: Si se desea un look mas limpio en equipos de bajo rendimiento, reducir `MAX_POINTS` o subir el intervalo de estampado.
+- Fecha: 2026-04-06
+- Autor: Copilot
+- Cambio: Se agrego una capa global de estela del cursor en `app/components/pointer-trail.tsx` con Three.js (WebGL fullscreen) que deposita trazas RGB tipo glitch y las desvanece progresivamente durante 15 segundos. Se integro en `app/layout.tsx` y se agregaron estilos de composicion en `app/globals.css`.
+- Impacto: El recorrido del puntero ahora deja una estela inmersiva visible por 15s, reforzando el look anaglifo/CRT sin bloquear interacciones de la pagina.
+- Proximo paso: Ajustar densidad de puntos o opacidad de traza si se requiere una presencia mas sutil en pantallas de alta resolucion.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se reviso y reforzo el glitch del seguidor de puntero para alinear el brief anaglifo moderno. En `app/components/pointer-follower.tsx` se modularizo el shader Three.js con funciones dedicadas para distorsion horizontal, scanlines, flicker, ruido y RGB split red/blue con intensificacion por hover. En `app/globals.css` se agregaron scanlines sutiles tipo CRT, micro-shake en hover sobre la capa WebGL interna, blur ligero y ajustes de aceleracion GPU sin afectar el seguimiento del puntero.
+- Impacto: El efecto ahora comunica mejor el estilo VHS/CRT cinematografico con separacion cromatica visible, distorsion horizontal controlada, flicker y transiciones suaves, manteniendo rendimiento y estructura modular.
+- Proximo paso: Validar en desktop y mobile el nivel de intensidad de `split`/`shake` para calibrar el balance entre dramatismo y legibilidad del contenido.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se reforzo el efecto glitch estereoscopico red/blue en `app/components/pointer-follower.tsx` aumentando el desplazamiento lateral RGB (`split`), reduciendo la capa base neutral y separando mejor las capas fantasma roja y azul con realce por diferencia (`redEdge`/`blueEdge`).
+- Impacto: El desdoble rojo/azul deja de verse superpuesto y ahora se percibe claramente como separacion lateral estereoscopica.
+- Proximo paso: Ajustar milimetricamente el valor base de `split` si se desea aun mas o menos desplazamiento segun cada resolucion.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio la composicion RGB del shader del puntero en `app/components/pointer-follower.tsx` para evitar superposicion sobre la imagen base. Se reemplazo la mezcla por canales por capas fantasma desplazadas (`redLayer` y `blueLayer`) con base neutral, y se ajusto el blend del canvas WebGL a `normal` en `app/globals.css` para preservar la separacion lateral visible.
+- Impacto: El glitch ahora muestra claramente las imagenes roja y azul desplazadas hacia los lados en lugar de quedar pegadas a la original.
+- Proximo paso: Ajustar el factor `split` si se desea mas o menos separacion lateral segun viewport.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio la direccion perceptiva del efecto rojo/azul del puntero en `app/globals.css`. La causa era un halo cromatico externo en `box-shadow` del borde, que hacia parecer que el RGB nacia desde la periferia hacia afuera. Se removio ese halo externo y se reemplazo por capas radiales internas en `pointerFollowerBackdrop`.
+- Impacto: El color rojo/azul ahora se percibe desde el centro de la circunferencia hacia el borde, consistente con el comportamiento esperado del shader.
+- Proximo paso: Si se desea mayor intensidad central, subir levemente opacidad de las capas radiales internas (+0.02 a +0.04).
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se removieron las lineas horizontales tipo interferencia analogica del efecto de puntero, manteniendo los cuadros glitch que aparecen/desaparecen. El ajuste se aplico en `app/components/pointer-follower.tsx` (se elimino componente espacial horizontal en `lumaField`) y en `app/globals.css` (se retiro `repeating-linear-gradient` de `pointerFollowerBackdrop`).
+- Impacto: El efecto conserva los bloques dinamicos solicitados sin las bandas grises horizontales.
+- Proximo paso: Ajustar densidad/tamano de bloques (`vec2(34.0, 20.0)`) si se desea un glitch cuadriculado mas fino o mas grande.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se ajusto el shader del seguidor de puntero en `app/components/pointer-follower.tsx` para que el efecto rojo/azul (RGB split) se aplique desde el centro del circulo y disminuya radialmente hasta desaparecer en el borde, eliminando la separacion cromatica periférica.
+- Impacto: El glitch cromatico ahora cumple la lectura solicitada: maxima intensidad en el centro y transicion limpia hacia borde sin aberracion.
+- Proximo paso: Ajustar exponente de caida radial (`splitFalloff`) si se desea una transicion mas abrupta o mas suave.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se ajusto nuevamente el shader del seguidor de puntero en `app/components/pointer-follower.tsx`: se elimino la distorsion por lineas horizontales, se redujo al 50% la distorsion maxima en el centro del circulo y se incremento la presencia de canales rojo/azul. Tambien se bajo la opacidad y brillo central para recuperar legibilidad del fondo.
+- Impacto: El efecto se ve mas limpio (sin bandas horizontales), mantiene glitch RGB mas marcado y deja de bloquear visualmente la imagen en el centro.
+- Proximo paso: Validar si en hover conviene subir un poco mas el canal azul para equilibrar tonos segun fondo real.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se ajusto el shader del seguidor de puntero en `app/components/pointer-follower.tsx` para disminuir la distorsion horizontal (jitter y shake) y aumentar el efecto rojo/azul elevando el `RGB split` y la intensidad de canales R/B.
+- Impacto: El glitch se percibe mas limpio y legible, con separacion cromatica rojo-azul mas marcada y menos deformacion de imagen.
+- Proximo paso: Validar visualmente si conviene subir un punto adicional el `split` en hover para estados interactivos.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se reemplazo el glitch CSS del seguidor de puntero por una version basada en Three.js en `app/components/pointer-follower.tsx`, usando shader con separacion RGB rojo/azul, scanlines, ruido horizontal, flicker y screen shake sutil. En `app/globals.css` se adapto el contenedor para composicion CRT y render WebGL dentro de la circunferencia.
+- Impacto: El efecto ahora tiene look anaglifo cinematografico mas consistente y escalable por GPU, con intensificacion de glitch al pasar sobre elementos interactivos.
+- Proximo paso: Afinar `uIntensity` y amplitud de `split` en shader segun feedback visual final del equipo.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se rediseño el glitch de la circunferencia del puntero en `app/globals.css` para acercarlo al estilo de referencia: nucleo blanco con separacion cromatica rojo/cian, cortes horizontales tipo interference y desvanecido radial hacia el borde.
+- Impacto: El efecto ahora se percibe como glitch RGB mas fiel (similar al ejemplo) y con intensidad concentrada en el centro de la circunferencia.
+- Proximo paso: Afinar amplitud de desplazamiento RGB (en px) si se requiere un look aun mas agresivo.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se agrego un glitch 3D rojo y azul dentro de la circunferencia que sigue al puntero en `app/globals.css` mediante capas `::before` y `::after` con animaciones desfasadas, mezcla cromatica y blur interno.
+- Impacto: El efecto visual ahora concentra mayor intensidad en el centro y se difumina hacia el borde de la circunferencia, generando una lectura de profundidad tipo aberracion cromatica.
+- Proximo paso: Ajustar velocidad o amplitud de los keyframes si se desea un glitch mas agresivo o mas sutil.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se elimino el fondo de la circunferencia que sigue al puntero en `app/globals.css` (`background: transparent`) y se incremento su tamano 10x ajustando `width` y `height`.
+- Impacto: El seguidor de puntero ahora se ve como anillo sin relleno y con presencia visual mucho mayor.
+- Proximo paso: Revisar en desktop si conviene reducir grosor del borde o brillo para evitar saturacion visual por el nuevo diametro.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se realizo revision completa del seguidor circular de puntero y se corrigio la causa raiz de invisibilidad en `app/components/pointer-follower.tsx` y `app/globals.css`: ya no se desactiva por `prefers-reduced-motion`; en su lugar mantiene visibilidad y reduce movimiento usando seguimiento inmediato (`ease` dinamico) y sin transiciones en modo reducido.
+- Impacto: El elemento circular vuelve a mostrarse en equipos donde el sistema tiene activado "Reducir movimiento".
+- Proximo paso: Confirmar en el equipo objetivo si se desea mantener este comportamiento o agregar una preferencia manual para ocultar el seguidor.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio visibilidad del seguidor circular del puntero en `app/components/pointer-follower.tsx` y `app/globals.css`, cambiando la deteccion de dispositivo a `any-pointer: fine`, activando estado visible inicial y ajustando media query para ocultarlo solo en contextos tactiles reales (`hover: none` y `pointer: coarse`).
+- Impacto: El elemento vuelve a verse en equipos hibridos (touch + mouse) y aparece de inmediato sin depender del primer movimiento.
+- Proximo paso: Verificar si se desea disminuir opacidad base para una presencia mas sutil al cargar la pagina.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se agrego un nuevo elemento visual global que sigue el puntero en toda la pagina mediante el componente `app/components/pointer-follower.tsx`, integrado en `app/layout.tsx` y estilizado como circunferencia en `app/globals.css`.
+- Impacto: Se incorpora una capa interactiva de cursor con forma circular que acompana el movimiento del usuario sin bloquear clics ni hovers del contenido.
+- Proximo paso: Ajustar diametro/opacidad del seguidor si se desea un efecto mas sutil o mas protagonista segun direccion visual final.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se redujo 15% el largo (alto visual) del canvas del cerebro de `Metodo` en `app/globals.css` ajustando `methodBrain`, `scenePlaceholderMethod` y `methodBrainSpacer` sin cambiar la escala del modelo. Ademas, en `app/components/method-brain.tsx` se desplazo el cerebro 20% hacia abajo respecto a su tamano visual mediante offset vertical del `brainGroup`.
+- Impacto: El canvas ocupa menos largo en pantalla y el cerebro queda mas bajo dentro del encuadre, manteniendo su tamano actual.
+- Proximo paso: Validar en mobile si se requiere un offset vertical levemente menor para evitar recorte inferior en pantallas bajas.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se ajusto el inicio del canvas de `Metodo` en `app/globals.css` para que el backdrop del cerebro comience a la altura del heading, y en `app/components/method-brain.tsx` se incremento en 50% el tamano visual del cerebro dentro del canvas mediante ajuste de encuadre de camara y fallback. Adicionalmente se tipó `asBackdrop` para mantener compatibilidad con su uso en `home-client-shell`.
+- Impacto: El render 3D del cerebro arranca alineado con el titulo de `Metodo` y tiene mayor protagonismo sin modificar el alto del canvas.
+- Proximo paso: Validar en mobile si conviene afinar el `top` del backdrop por breakpoint para mantener alineacion exacta con el heading.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio la linea de `Metodo` en `app/globals.css` migrandola a un layout `flex` en el `h2` con pseudo-elemento expansible, y se removio el recorte de la seccion (`overflow: visible`) para que la linea alcance el borde derecho real del viewport.
+- Impacto: La linea ya no se corta antes de tiempo y se extiende correctamente hasta el limite derecho de la pagina ignorando el margen interno.
+- Proximo paso: Validar en resoluciones ultraanchas si se requiere ajustar el `gap` entre texto y linea.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se realizo ajuste fino en la linea de `Metodo` (`app/globals.css`) elevando su alineacion vertical respecto al titulo y manteniendo su extension hasta el borde derecho real del viewport ignorando el margen interno.
+- Impacto: La linea queda visualmente alineada con `¿Cómo pensamos?` y ocupa el largo esperado hacia el limite derecho de la pagina.
+- Proximo paso: Validar en desktop ultrawide si el grosor de linea requiere un leve aumento para mantener presencia visual.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se ajusto la linea decorativa de `Metodo` en `app/globals.css` para que comience despues del texto `¿Cómo pensamos?`, mantenga alineacion con el titulo y termine en el borde derecho del viewport ignorando el margen interno.
+- Impacto: La linea ahora respeta la lectura del titulo y se integra al ancho total visible de la pagina.
+- Proximo paso: Validar en mobile/tablet si conviene reducir el `gap` inicial de la linea para titulos en dos renglones.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se agrego una linea decorativa en el apartado `Metodo` en `app/globals.css`, usando pseudo-elemento en `h2` con estilo equivalente al recurso visual del bloque `Impacto`.
+- Impacto: El titulo de Metodo gana continuidad grafica con el sistema visual ya usado en Impacto.
+- Proximo paso: Ajustar largo de la linea por breakpoint si se desea una composicion mas compacta en mobile.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se redujo 5% el tamano del prisma en `app/components/services.tsx` ajustando `prismScale` a `1.2825` sin modificar el canvas.
+- Impacto: El prisma queda mas contenido dentro del mismo canvas.
+- Proximo paso: Validar visualmente si el nuevo encuadre requiere microajuste de `prismOffsetY`.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se aplico un 5% adicional al alto del canvas del prisma de `Servicios` en `app/globals.css`, ajustando `--services-prism-height` y `min-height` para reflejar el nuevo incremento acumulado.
+- Impacto: El canvas crece nuevamente hacia abajo sin alterar la escala del prisma.
+- Proximo paso: Validar si el nuevo alto afecta el balance con el titulo de `Servicios` en mobile.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se amplió 5% el alto del canvas del prisma de `Servicios` hacia abajo en `app/globals.css`, actualizando `--services-prism-height` y `min-height` del bloque 3D sin modificar la escala del prisma.
+- Impacto: El canvas gana altura extra inferior, manteniendo el encuadre superior estable.
+- Proximo paso: Revisar si la nueva altura requiere ajustar el solape negativo del bloque `Servicios`.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se aumento 10% el tamano del canvas del prisma de `Servicios` en `app/globals.css` ajustando `--services-prism-height` y `min-height` del bloque 3D, sin tocar la geometria del prisma en `app/components/services.tsx`. Ademas, se separo `--services-prism-shift` para mantener estable el desplazamiento vertical existente de la seccion.
+- Impacto: El canvas tiene mayor area visible y el prisma conserva exactamente su escala actual.
+- Proximo paso: Revisar visualmente en mobile si conviene elevar levemente la camara para aprovechar el nuevo alto de canvas.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: La seccion `Metodo` se reconfiguro para usar `MethodBrain` como fondo tipo backdrop (similar al patron del globe), cubriendo todo el alto del bloque desde el inicio de la seccion hasta su cierre visual. Se elimino el bloque narrativo con los textos de `Escucha activa`, `Estrategia creativa` y `Ejecucion con aprendizaje`.
+- Impacto: El cerebro ahora funciona como capa de fondo inmersiva de toda la seccion `Metodo`, y la seccion queda mas limpia al remover el texto descriptivo.
+- Proximo paso: Validar en mobile si conviene reducir levemente `height` del `methodBrainSpacer` para equilibrar scroll.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: En `app/components/impact-globe.tsx` se redujo la separacion pin-globe al 25% de la actual (`globeRadius + 0.08` -> `+ 0.02`) y se cambio el material del pin a `MeshBasicMaterial` blanco (`#ffffff`) para evitar tinte por luces de la escena.
+- Impacto: Los pines quedan mas cercanos al globe y el color blanco se ve fiel, sin contaminacion por la iluminacion cyan/verde del entorno.
+- Proximo paso: Validar visualmente si conviene un offset intermedio (`+0.03`) para evitar z-fighting en algunos angulos.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio la orientacion de los pines del globe rotandolos 180 grados en `app/components/impact-globe.tsx` y se actualizo su material a color blanco.
+- Impacto: El logo deja de verse de cabeza y los pines ganan una lectura mas limpia y consistente sobre el globe.
+- Proximo paso: Ajustar `emissiveIntensity` si se desea un blanco mas brillante o mas neutro segun el fondo en cada viewport.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se corrigio la generacion de pines del globe en `app/components/impact-globe.tsx` filtrando paths del SVG por trazo blanco y descartando shapes outlier para evitar extruir el contorno rectangular del archivo.
+- Impacto: El pin deja de verse como prisma rectangular y respeta mejor la extruccion del diseno del logo TNT.
+- Proximo paso: Validar visualmente si conviene reducir o aumentar el umbral de filtro de outliers segun el detalle deseado del logo.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se reemplazaron los pines esfericos del globe en `app/components/impact-globe.tsx` por pines 3D con profundidad extruidos desde `public/Vectorizer-io-tnt-logo.svg` (origen: `Pictures/Vectorizer-io-tnt-logo.svg`) usando `SVGLoader`.
+- Impacto: Los marcadores ahora muestran el logo TNT con volumen real y quedan posicionados ligeramente por encima de la superficie del globe para mayor legibilidad.
+- Proximo paso: Ajustar `targetWidth` y `globeRadius + offset` si se desea una presencia mayor/menor del pin en mobile.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se desplazo el prisma de `Servicios` un 10% de su altura hacia abajo en `app/components/services.tsx` ajustando la posicion del grupo 3D.
+- Impacto: El prisma queda levemente mas bajo dentro del mismo canvas sin alterar la escala ni la interaccion.
+- Proximo paso: Revisar si el nuevo offset requiere ajustar el `margin-top` del bloque de Servicios.
+- Fecha: 2026-04-04
+- Autor: Copilot
+- Cambio: Se redujo 10% el tamano del globe en `app/components/impact-globe.tsx` ajustando `globeScale` para mantener el mismo canvas.
+- Impacto: El globe se ve mas contenido dentro del mismo contenedor, sin alterar el layout general del bloque Impacto.
+- Proximo paso: Revisar si se requiere microajuste de `globeOffsetX` para re-centrar la composicion visual.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se desplazo la seccion `Servicios` hacia abajo un 10% de la altura del prisma en `app/globals.css`, introduciendo `--services-prism-height` y aplicando `margin-top` proporcional al alto del bloque 3D.
+- Impacto: La seccion gana separacion vertical respecto al bloque previo manteniendo la escala del prisma sin ajustes adicionales.
+- Proximo paso: Validar el nuevo espaciado en mobile para evitar exceso de aire antes del titulo.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se redujo 10% el tamano del globe de `Impacto` en `app/globals.css`, ajustando `impactGlobe`, `impactGlobeSpacer` y `--impact-globe-height` en desktop y mobile.
+- Impacto: El globe queda mas contenido sin alterar la composicion de textos ni el comportamiento del canvas.
+- Proximo paso: Validar en mobile si el nuevo alto mantiene el balance con `impactStatsBoard`.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se aumento otro 10% el tamano visual de las secciones `Impacto` y `Servicios` en `app/globals.css`, ajustando alturas `min-height` y `clamp()` en `impactGlobe`, `impactGlobeSpacer`, `impactStatsBoard` y `scenePlaceholderServices`, incluyendo overrides mobile.
+- Impacto: Ambas secciones ganan mayor presencia vertical y mejor balance con el resto de la narrativa, manteniendo la misma composicion y comportamiento responsivo.
+- Proximo paso: Validar en viewport pequeno si se requiere compensar con un leve ajuste de solape vertical en `servicesSection`.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se oscurecio la paleta azul/roja de `MethodBrain` en `app/components/method-brain.tsx`, unificando colores base, emissive y edges para hemisferio izquierdo (azul mas profundo) y derecho (rojo mas profundo) en modelo FBX y fallback.
+- Impacto: Mejora el contraste y la lectura del volumen 3D manteniendo el estilo translucido sin perder separacion cromatica entre hemisferios.
+- Proximo paso: Validar en pantallas con brillo alto si conviene subir ligeramente `opacity` para reforzar presencia de color.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se mantuvo el estilo traslucido de `MethodBrain` y se aplico color por hemisferio: izquierdo en azul y derecho en rojo, tanto en el modelo FBX como en el fallback wireframe. Tambien se ajustaron los colores de los edges para respetar la separacion izquierda/derecha.
+- Impacto: El cerebro conserva su look etereo actual pero gana lectura visual por lateralidad cromatica (azul/rojo).
+- Proximo paso: Validar en diferentes angulos de rotacion si se desea elevar o reducir la saturacion de cada hemisferio.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: En `app/components/services.tsx` se redujo un 10% la escala del prisma (`prismScale` de `1.5` a `1.35`) sin cambiar el tamano del canvas. En `app/globals.css` se incremento un 10% el tamano visual de las secciones `Impacto` y `Servicios` ajustando alturas `clamp()` de `impactGlobe`, `impactGlobeSpacer`, `impactStatsBoard` y `scenePlaceholderServices`.
+- Impacto: El prisma queda un poco mas contenido dentro del mismo canvas, mientras los bloques `Impacto` y `Servicios` recuperan mayor presencia vertical en desktop y mobile.
+- Proximo paso: Revisar visualmente en viewport pequeno si conviene microajustar la posicion del titulo de `Servicios` tras el aumento de altura.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se aumento en 50% el tamano del prisma del componente `Services` en `app/components/services.tsx` incrementando la escala de su geometria (`prismHeight`) sin modificar el tamano del canvas contenedor.
+- Impacto: El prisma gana protagonismo visual dentro del mismo espacio de render, manteniendo estable el layout de la seccion.
+- Proximo paso: Validar en dispositivos de menor ancho si se requiere microajuste de distancia de camara para conservar encuadre optimo.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: En `app/globals.css` se redujo un 25% la altura del canvas del prisma de `Servicios` ajustando `.servicesSection .impactGlobe` y `.servicesSection .scenePlaceholderServices` a `min-height: 378px` y `height: clamp(378px, 62.1vw, 621px)`.
+- Impacto: El bloque 3D de `Servicios` ocupa menos altura visual y deja mas espacio para el contenido siguiente sin alterar la interaccion del prisma.
+- Proximo paso: Validar en desktop y mobile que el nuevo alto mantenga buen balance visual con el titulo de seccion.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: En `app/components/home-client-shell.tsx` se elimino el formato de tarjetas del bloque de textos de `Metodo` y se reemplazo por items narrativos simples (`methodNarrativeList`/`methodNarrativeItem`). En `app/globals.css` se ajustaron `methodBrainWrap`, `methodBrain` y `scenePlaceholderMethod` para igualar la escala visual del bloque `Servicios`.
+- Impacto: La seccion `Metodo` ahora mantiene el mismo tamano visual que `Servicios` y los textos se muestran sin cards, con una lectura mas limpia y directa.
+- Proximo paso: Revisar visualmente en desktop/mobile si se desea agregar separadores sutiles entre items narrativos del metodo.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Se agrego el asset faltante `public/models/brain_tex.jpg` como textura de fallback para el modelo `Brain_Model.fbx` en runtime local.
+- Impacto: Se elimina el 404 de `GET /models/brain_tex.jpg` durante la carga del componente 3D `MethodBrain`, reduciendo ruido en consola y evitando errores de carga de textura.
+- Proximo paso: Revisar si conviene reemplazar este fallback por la textura final del equipo de diseno para mantener consistencia visual exacta.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Migracion de animacion de `THREE.Clock` (deprecado) a `THREE.Timer` en `app/components/impact-globe.tsx` y `app/components/services.tsx`, incluyendo `timer.update()` en cada frame y liberacion con `timer.dispose()` en cleanup.
+- Impacto: Se eliminan warnings de deprecacion en consola y se mantiene estable el calculo de `deltaSeconds` para la inercia/rotacion de ambas escenas 3D.
+- Proximo paso: Verificar en `npm run dev` que no reaparezcan warnings de `THREE.Clock` durante interacciones (drag, hover y refresh).
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Paquete de correcciones "safe" aplicado: migracion del logo del header a `next/link` en `app/components/site-header.tsx`; saneo de scripts en `package.json` (`dev` sin borrado de `.next`, `dev:clean` solo limpieza, nuevo `dev:reset`); eliminacion de archivos no usados `app/components/scroll-journey.tsx` y `app/components/futuristic-pin.ts`.
+- Impacto: Se reduce el riesgo de inconsistencias de chunks al alternar desarrollo/build, se corrige el error de lint de navegacion interna y se limpia codigo muerto para mejorar mantenibilidad.
+- Proximo paso: Ejecutar validacion funcional de refresh en `npm run dev` y confirmar estabilidad de carga de assets 3D en primera visita.
+- Fecha: 2026-04-03
+- Autor: Copilot
+- Cambio: Ajuste fino de la linea decorativa en `Servicios` dentro de `app/globals.css`: se bajo su posicion vertical (`--services-line-top`) y se incremento el recorte del extremo derecho (`--services-line-end-gap`) para que termine antes del inicio de `Nuestros Servicios`.
+- Impacto: La linea queda visualmente mas alineada con el titulo principal y evita invadir el bloque de texto en desktop.
+- Proximo paso: Validar en mobile/tablet si el recorte derecho requiere microajuste adicional por breakpoint.
+- Fecha: 2026-03-29
+- Autor: Copilot
+- Cambio: Se redujo la opacidad del fondo del header a un 40% de su intensidad anterior ajustando la formula de `background` en `.siteHeader` dentro de `app/globals.css`.
+- Impacto: El encabezado se ve mas ligero y deja respirar mas el contenido de fondo mientras sigue ganando presencia con el scroll.
+- Proximo paso: Validar si el nivel de translucidez sigue siendo legible en mobile.
+- Fecha: 2026-03-29
+- Autor: Copilot
+- Cambio: Se creo el componente `app/components/site-header.tsx` con el logo TNT a la izquierda. El fondo del header interpola de transparente a negro traslucido conforme el usuario hace scroll (via CSS variable `--header-scroll` actualizada por scroll listener). La transicion de vuelta a transparente ocurre con la misma velocidad al subir. Se montó en `app/layout.tsx` para que persista en toda la pagina. Estilos en `app/globals.css` clase `.siteHeader`.
+- Impacto: La pagina gana un encabezado persistente con comportamiento inmersivo coherente con el estilo oscuro del sitio.
+- Proximo paso: Evaluar si se desean agregar links de navegacion en el header.
+- Fecha: 2026-03-29
+- Autor: Copilot
+- Cambio: Se llevo la seccion de `Nuestros Servicios` lo mas arriba posible ajustando `margin-top` en `.section.servicesSection` y aumentando el solape negativo de `.scenePlaceholderServices` y `.impactGlobeWrap` en `app/globals.css`.
+- Impacto: La seccion gana el maximo acercamiento visual al bloque previo sin alterar la estructura del componente.
+- Proximo paso: Revisar si en mobile conviene relajar un poco el solape para no comprometer la lectura.
+- Fecha: 2026-03-29
+- Autor: Copilot
+- Cambio: Se subio el apartado de `Nuestros Servicios` ajustando el margen superior de `.section.servicesSection` en `app/globals.css` a un valor negativo controlado con `clamp()`.
+- Impacto: La seccion de Servicios queda mas cerca del bloque anterior y gana continuidad visual en la pagina.
+- Proximo paso: Validar en desktop y mobile que el nuevo solape no afecte la lectura del titulo ni el encuadre del prisma.
+- Fecha: 2026-03-29
+- Autor: Copilot
+- Cambio: Reemplazo de pines cilindricos del globe por pins 3D con logo TNT extruido. Se copio el SVG vectorizado a `public/tnt-logo.svg`. Se reescribio `app/components/futuristic-pin.ts` para cargar el SVG asincrono via `SVGLoader`, extraer los paths del grupo con stroke blanco (letras TNT), extruirlos con `ExtrudeGeometry` (depth 0.12, bevel activado), centrar la insignia y aplicar material cyan emissivo. El stem y anillo flotante permanecen como fallback inmediato mientras el SVG carga. Se actualizo `impact-globe.tsx` para usar import ES estatico en lugar de `require()` dinamico.
+- Impacto: Los pines del globe pasan a mostrar el logo TNT en 3D extruido con brillo cyan, integrado de forma inmersiva sobre la esfera interactiva.
+- Proximo paso: Validar visualmente escala/orientacion del logo sobre el globe y microajustar `targetWidth`, `depth` y `position.y` segun necesidad.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Reduccion real del largo del canvas backdrop del globe en `app/globals.css`: `.impactGlobeWrapBackdrop` pasa a `height: 80%` con `overflow: hidden`, y `.impactGlobeWrapBackdrop .impactGlobe` a `height: 125%` para mantener escala y encuadre del globe mientras se recorta solo la parte inferior.
+- Impacto: El bloque de Servicios sube visualmente porque el canvas termina antes, manteniendo el globe con el mismo tamano y posicion percibida.
+- Proximo paso: Si se requiere ajuste fino, mover `height: 80%` a un valor entre `78%-84%` segun viewport objetivo.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Ajuste del canvas backdrop del globe en `app/globals.css` para recortarlo en su borde inferior mediante `clip-path` (`.impactGlobeWrapBackdrop .impactGlobe canvas`), con variable `--impact-backdrop-crop-bottom` en `.impactGlobeWrapBackdrop`.
+- Impacto: El canvas del bloque Intro/Impacto deja de invadir visualmente el limite con Servicios y termina en el borde inferior visible de la esfera, sin cambiar el tamano/posicion del globe ni la distribucion de textos superiores.
+- Proximo paso: Validar en mobile y desktop si el recorte requiere microajuste del porcentaje de `--impact-backdrop-crop-bottom`.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: En `app/globals.css` se ajusto el bloque de Servicios para alinear `Nuestros Servicios` a la derecha, agregar una linea decorativa inferior tipo `impactInlineLead::after`, y superponer el titulo sobre la esfera mediante `z-index` y `margin-top` negativo en `.scenePlaceholderServices`/`.impactGlobeWrap` dentro de `.servicesSection`.
+- Impacto: El titulo de Servicios gana jerarquia visual y queda integrado al prisma con una composicion inmersiva, sin modificar los textos ni layout de Intro e Impacto.
+- Proximo paso: Validar en mobile si el nivel de solape requiere microajuste de `margin-top` por breakpoint.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Se elimino el radio visual del wrapper de `Services` quitando `border-radius: 20px` de `.impactGlobeWrap` en `app/globals.css`.
+- Impacto: El bloque 3D queda completamente plano, sin contorno suave ni aire visual adicional.
+- Proximo paso: Revisar si conviene mantener algun separador minimo solo en mobile por legibilidad.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Se eliminaron los margenes internos superior e inferior del componente de `Services` ajustando el wrapper `impactGlobeWrap` a `margin-bottom: 0` en `app/globals.css`.
+- Impacto: El prisma queda pegado al flujo inmediato de la seccion sin aire extra visual dentro del propio componente.
+- Proximo paso: Validar si el bloque conserva suficiente separacion respecto al texto superior en pantallas pequenas.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Se elimino por completo la separacion entre `Nuestros Servicios` y el prisma en `app/globals.css`, anulando el `padding-top` de `.section.servicesSection` y el `margin-bottom` del `h2` dentro de `.servicesSection`.
+- Impacto: El encabezado queda pegado al bloque 3D de Servicios sin tocar la distribucion de Intro, Impacto ni la logica del componente 3D.
+- Proximo paso: Revisar si en mobile se desea conservar una minima respiracion de 4-8px por legibilidad.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Reduccion al 20% de la separacion entre el titulo `Nuestros Servicios` y el prisma, aplicando un `margin-bottom` especifico en `.section.servicesSection h2` dentro de `app/globals.css`.
+- Impacto: El bloque de servicios queda mas compacto y el prisma se acerca al encabezado sin alterar el resto de la seccion.
+- Proximo paso: Validar en desktop y mobile si el nuevo espaciado mantiene una lectura confortable.
+- Fecha: 2026-03-28
+- Autor: Copilot
+- Cambio: Reduccion del 20% en el tamano del prisma de la seccion Servicios ajustando `prismHeight` de `2.585` a `2.068` en `app/components/services.tsx`; el radio y las caras se recalculan en cadena para mantener proporcion.
+- Impacto: El prisma y sus paneles proyectados ocupan menos area visual, mejorando balance con el resto de la narrativa sin romper la interaccion 3D existente.
+- Proximo paso: Validar en desktop y mobile si el nuevo tamano requiere microajuste de velocidad de rotacion o de separacion vertical con el contenido.
 - Fecha: 2026-03-27
 - Autor: Copilot
 - Cambio: Ajustado el desplazamiento del centrado del globe al presionar una bandera: ahora el enfoque se mueve un 20% a la derecha y 10% arriba respecto al pin, para mejorar la visibilidad y composición visual del pin seleccionado (`impact-globe.tsx`).

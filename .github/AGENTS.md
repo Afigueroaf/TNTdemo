@@ -31,12 +31,6 @@ Uso recomendado:
 - Optimizar carga inicial, fluidez y renderizado en JavaScript, Node.js, Three.js y Next.js.
 - Recibir propuestas tecnicas con impacto medible, codigo optimizado y alternativas de arquitectura escalable.
 
-### frontend-inmersivo-3d-senior
-Uso recomendado:
-- Disenar y construir experiencias web inmersivas institucionales con narrativa de conversion.
-- Implementar componentes frontend de alto rendimiento con Next.js, React y Three.js.
-- Priorizar arquitectura modular, accesibilidad, SEO tecnico y optimizacion de CPU/GPU en layouts responsivos.
-
 ## Skills
 
 ### bootstrap-feature

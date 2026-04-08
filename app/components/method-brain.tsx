@@ -5,6 +5,22 @@ import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 
 const ENABLE_REGION_TRIM = false;
+const BRAIN_VIEWPORT_SCALE = 1.5;
+const BRAIN_TARGET_SIZE = 2.6;
+const BRAIN_VERTICAL_SHIFT_RATIO = 0.2;
+
+const BRAIN_COLORS = {
+  left: {
+    base: "#3f7fc3",
+    emissive: "#0f2747",
+    edge: "#5d93d1",
+  },
+  right: {
+    base: "#c34762",
+    emissive: "#3f0c1a",
+    edge: "#d16680",
+  },
+} as const;
 
 function disposeObjectResources(object: THREE.Object3D) {
   object.traverse((node) => {
@@ -133,44 +149,59 @@ function addSparseEdges(mesh: THREE.Mesh, color: string) {
   mesh.add(edges);
 }
 
-function createFallbackWireframeBrain() {
-  const group = new THREE.Group();
-  const material = new THREE.MeshStandardMaterial({
-    color: "#f6a9c9",
-    emissive: "#5f133a",
-    emissiveIntensity: 0.22,
-    roughness: 0.56,
-    metalness: 0.04,
+function createBrainWireMaterial(color: string, emissive: string) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    emissive,
+    emissiveIntensity: 0.2,
+    roughness: 0.6,
+    metalness: 0.05,
     transparent: true,
-    opacity: 0.08,
+    opacity: 0.05,
     depthWrite: false,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
   });
+}
 
-  const left = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), material.clone());
+function createFallbackWireframeBrain() {
+  const group = new THREE.Group();
+  const leftMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
+  const rightMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
+  leftMaterial.opacity = 0.08;
+  leftMaterial.emissiveIntensity = 0.22;
+  leftMaterial.roughness = 0.56;
+  leftMaterial.metalness = 0.04;
+  rightMaterial.opacity = 0.08;
+  rightMaterial.emissiveIntensity = 0.22;
+  rightMaterial.roughness = 0.56;
+  rightMaterial.metalness = 0.04;
+
+  const left = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), leftMaterial);
   left.scale.set(0.95, 1, 1.08);
   left.position.set(-0.52, 0.05, 0);
-  addSparseEdges(left, "#ffb7db");
+  addSparseEdges(left, BRAIN_COLORS.left.edge);
 
-  const right = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), material.clone());
+  const right = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), rightMaterial);
   right.scale.set(0.95, 1, 1.08);
   right.position.set(0.52, 0.05, 0);
-  addSparseEdges(right, "#ffb7db");
+  addSparseEdges(right, BRAIN_COLORS.right.edge);
 
   group.add(left, right);
+  group.scale.setScalar(BRAIN_VIEWPORT_SCALE);
 
   return {
     object: group,
     dispose: () => {
       disposeObjectResources(group);
-      material.dispose();
+      leftMaterial.dispose();
+      rightMaterial.dispose();
     },
   };
 }
 
-export function MethodBrain() {
+export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -180,13 +211,17 @@ export function MethodBrain() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    camera.position.set(0, 0, 5.25);
+    camera.position.set(0, 0, 3.5);
 
     const nav = navigator as Navigator & { deviceMemory?: number };
     const deviceMemory = nav.deviceMemory ?? 4;
     const isLowEndDevice = deviceMemory <= 4 || window.devicePixelRatio >= 2.5;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isLowEndDevice,
+      alpha: true,
+      powerPreference: isLowEndDevice ? "low-power" : "high-performance",
+    });
     renderer.setPixelRatio(
       isLowEndDevice
         ? Math.min(window.devicePixelRatio || 1, 1.35)
@@ -206,6 +241,7 @@ export function MethodBrain() {
     updateRendererSize(rect.width, rect.height);
 
     const brainGroup = new THREE.Group();
+    brainGroup.position.y = -(BRAIN_TARGET_SIZE * BRAIN_VERTICAL_SHIFT_RATIO);
     scene.add(brainGroup);
 
     const fallback = createFallbackWireframeBrain();
@@ -233,7 +269,12 @@ export function MethodBrain() {
     }
 
     const loader = new FBXLoader();
-    loader.load(
+    const leftWireMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
+    const rightWireMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
+
+    const shouldAddMeshEdges = !isLowEndDevice;
+
+    const loadModel = () => loader.load(
       "/models/Brain_Model.fbx",
       (object) => {
         if (isUnmounted) {
@@ -242,8 +283,18 @@ export function MethodBrain() {
         }
 
         const model = object;
+        const bounds = new THREE.Box3().setFromObject(model);
+        const center = new THREE.Vector3();
+        const size = new THREE.Vector3();
+        const sphere = new THREE.Sphere();
+        bounds.getCenter(center);
+        bounds.getSize(size);
+        bounds.getBoundingSphere(sphere);
+
         let meshCount = 0;
         const originalMaterials = new Set<THREE.Material>();
+        const meshBounds = new THREE.Box3();
+        const meshCenter = new THREE.Vector3();
 
         model.traverse((node) => {
           if (!(node instanceof THREE.Mesh)) return;
@@ -256,31 +307,12 @@ export function MethodBrain() {
             originalMaterials.add(source);
           }
 
-          const wireMaterial = new THREE.MeshStandardMaterial({
-            color: "#f6a9c9",
-            emissive: "#5f133a",
-            emissiveIntensity: 0.2,
-            roughness: 0.6,
-            metalness: 0.05,
-            transparent: true,
-            opacity: 0.05,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: 1,
-            polygonOffsetUnits: 1,
-          });
-          node.material = wireMaterial;
+          meshBounds.setFromObject(node);
+          meshBounds.getCenter(meshCenter);
+          node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
         });
 
         originalMaterials.forEach((mat) => mat.dispose());
-
-        const bounds = new THREE.Box3().setFromObject(model);
-        const center = new THREE.Vector3();
-        const size = new THREE.Vector3();
-        const sphere = new THREE.Sphere();
-        bounds.getCenter(center);
-        bounds.getSize(size);
-        bounds.getBoundingSphere(sphere);
 
         const hasValidBounds = Number.isFinite(size.x)
           && Number.isFinite(size.y)
@@ -301,18 +333,28 @@ export function MethodBrain() {
         }
 
         // Generate edge lines after pruning so removed regions are not still drawn.
-        model.traverse((node) => {
-          if (!(node instanceof THREE.Mesh)) return;
-          addSparseEdges(node, "#ffb7db");
-        });
+        if (shouldAddMeshEdges) {
+          const meshBounds = new THREE.Box3();
+          const meshCenter = new THREE.Vector3();
+          model.traverse((node) => {
+            if (!(node instanceof THREE.Mesh)) return;
+            meshBounds.setFromObject(node);
+            meshBounds.getCenter(meshCenter);
+            addSparseEdges(node, meshCenter.x < center.x ? BRAIN_COLORS.left.edge : BRAIN_COLORS.right.edge);
+          });
+        }
 
-        const targetSize = 2.6;
         const largest = Math.max(size.x, size.y, size.z, 0.001);
-        const scale = targetSize / largest;
+        const scale = BRAIN_TARGET_SIZE / largest;
         model.scale.setScalar(scale);
 
         const fittedRadius = Math.max(sphere.radius * scale, 0.8);
-        camera.position.z = THREE.MathUtils.clamp(fittedRadius * 3.1, 3.9, 6.4);
+        brainGroup.position.y = -((fittedRadius * 2) * BRAIN_VERTICAL_SHIFT_RATIO);
+        camera.position.z = THREE.MathUtils.clamp(
+          (fittedRadius * 3.1) / BRAIN_VIEWPORT_SCALE,
+          2.6,
+          5.2,
+        );
 
         brainGroup.remove(fallback.object);
         fallback.dispose();
@@ -327,6 +369,23 @@ export function MethodBrain() {
         reportModelLoadError(error);
       },
     );
+
+    const windowWithIdle = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions,
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let loadIdleHandle = 0;
+    let loadTimeoutHandle = 0;
+
+    if (typeof windowWithIdle.requestIdleCallback === "function") {
+      loadIdleHandle = windowWithIdle.requestIdleCallback(loadModel, { timeout: 1000 });
+    } else {
+      loadTimeoutHandle = window.setTimeout(loadModel, 180);
+    }
 
     const ambient = new THREE.AmbientLight("#d8d8ff", 1.02);
     scene.add(ambient);
@@ -413,10 +472,21 @@ export function MethodBrain() {
     visibilityObserver.observe(host);
 
     let raf = 0;
+    let hiddenFrameTimeout = 0;
+
+    function scheduleNextFrame(hidden = false) {
+      if (hidden) {
+        hiddenFrameTimeout = window.setTimeout(() => {
+          raf = window.requestAnimationFrame(animate);
+        }, 160);
+        return;
+      }
+      raf = window.requestAnimationFrame(animate);
+    }
 
     function animate() {
       if (!isVisible) {
-        raf = window.requestAnimationFrame(animate);
+        scheduleNextFrame(true);
         return;
       }
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxVelocity, maxVelocity);
@@ -430,7 +500,7 @@ export function MethodBrain() {
       angularVelocityX *= inertia;
 
       renderer.render(scene, camera);
-      raf = window.requestAnimationFrame(animate);
+      scheduleNextFrame();
     }
 
     animate();
@@ -438,6 +508,13 @@ export function MethodBrain() {
     return () => {
       isUnmounted = true;
       window.cancelAnimationFrame(raf);
+      window.clearTimeout(hiddenFrameTimeout);
+      if (loadIdleHandle && typeof windowWithIdle.cancelIdleCallback === "function") {
+        windowWithIdle.cancelIdleCallback(loadIdleHandle);
+      }
+      if (loadTimeoutHandle) {
+        window.clearTimeout(loadTimeoutHandle);
+      }
       visibilityObserver.disconnect();
       resizeObserver.disconnect();
       host.removeEventListener("pointerdown", onPointerDown);
@@ -454,6 +531,8 @@ export function MethodBrain() {
         fallback.dispose();
       }
 
+      leftWireMaterial.dispose();
+      rightWireMaterial.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === host) {
         host.removeChild(renderer.domElement);
@@ -462,7 +541,7 @@ export function MethodBrain() {
   }, []);
 
   return (
-    <div className="methodBrainWrap">
+    <div className={asBackdrop ? "methodBrainWrap methodBrainWrapBackdrop" : "methodBrainWrap"}>
       <div className="methodBrain" ref={mountRef} aria-label="Modelo 3D de cerebro interactivo" />
     </div>
   );

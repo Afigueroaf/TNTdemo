@@ -108,158 +108,8 @@ html.lenis body {
   height: auto;
 }
 
-.pointerFollower {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: clamp(330px, 32.25vw, 510px);
-  height: clamp(330px, 32.25vw, 510px);
-  border-radius: 50%;
-  border: 1.6px solid rgba(234, 241, 255, 0.9);
-  background: transparent;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 0 22px rgba(232, 242, 255, 0.12);
-  pointer-events: none;
-  opacity: 0;
-  transform: translate3d(-100px, -100px, 0);
-  transition: opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-  z-index: 130;
-  will-change: transform, filter;
-  overflow: hidden;
-  isolation: isolate;
-  backface-visibility: hidden;
-}
 
-.pointerTrail {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 120;
-  overflow: hidden;
-  will-change: transform, opacity;
-}
 
-.pointerTrail canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-  transform: translateZ(0);
-  mix-blend-mode: screen;
-}
-
-.pointerFollowerBackdrop,
-.pointerFollowerWebgl {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-}
-
-.pointerFollowerBackdrop {
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 50%, transparent 76%),
-    radial-gradient(circle at center, rgba(255, 64, 92, 0.11) 0%, rgba(255, 64, 92, 0.02) 52%, transparent 78%),
-    radial-gradient(circle at center, rgba(66, 188, 255, 0.11) 0%, rgba(66, 188, 255, 0.02) 52%, transparent 78%);
-  backdrop-filter: saturate(1.35) contrast(1.2) blur(1.4px);
-  opacity: 0.74;
-  mix-blend-mode: screen;
-}
-
-.pointerFollowerBackdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04) 0,
-    rgba(255, 255, 255, 0.04) 1px,
-    rgba(0, 0, 0, 0) 1px,
-    rgba(0, 0, 0, 0) 4px
-  );
-  opacity: 0.23;
-  mix-blend-mode: screen;
-  animation: pointerScanDrift 2.4s linear infinite;
-}
-
-.pointerFollowerWebgl {
-  inset: 8%;
-  filter: blur(0.72px) saturate(1.08);
-}
-
-.pointerFollowerWebgl canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-  border-radius: 50%;
-  mix-blend-mode: normal;
-  transform: translateZ(0);
-}
-
-.pointerFollower.is-active {
-  opacity: 1;
-}
-
-.pointerFollower.is-hover {
-  filter: saturate(1.08);
-}
-
-.pointerFollower.is-hover .pointerFollowerWebgl {
-  animation: pointerScreenShake 280ms steps(2, end) infinite;
-}
-
-.pointerFollower.is-pressed {
-  border-color: rgba(216, 255, 242, 0.95);
-  box-shadow:
-    0 0 0 1px rgba(245, 248, 255, 0.35),
-    0 0 28px rgba(232, 245, 255, 0.18);
-}
-
-.reduced-motion .pointerFollower {
-  transition: none;
-}
-
-.reduced-motion .pointerFollowerWebgl {
-  filter: blur(0.35px) saturate(1);
-}
-
-.reduced-motion .pointerFollowerBackdrop::after,
-.reduced-motion .pointerFollower.is-hover .pointerFollowerWebgl {
-  animation: none;
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .pointerFollower {
-    display: none;
-  }
-}
-
-@keyframes pointerScanDrift {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(4px);
-  }
-}
-
-@keyframes pointerScreenShake {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  25% {
-    transform: translate3d(0.7px, -0.3px, 0);
-  }
-  50% {
-    transform: translate3d(-0.6px, 0.2px, 0);
-  }
-  75% {
-    transform: translate3d(0.4px, 0.55px, 0);
-  }
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-}
 
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
@@ -437,7 +287,7 @@ html.lenis body {
 
 .introKicker {
   margin-bottom: 1rem;
-  color: color-mix(in oklab, var(--accent-2) 75%, #ffffff 25%);
+  color: #bde3ff;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.24em;
@@ -572,7 +422,7 @@ html.lenis body {
   max-width: none;
   padding-bottom: 0.12em;
   border-bottom: 0;
-  color: color-mix(in oklab, var(--text) 88%, var(--accent-2) 12%);
+  color: #dde8f5;
   font-size: clamp(0.64rem, 1.28vw, 1.12rem);
   line-height: 1.15;
   align-self: center;
@@ -929,7 +779,7 @@ html.lenis body {
 .statCard {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 42%),
-    color-mix(in oklab, var(--panel-soft) 86%, #ffffff 14%);
+    rgba(33, 47, 63, 0.9);
   border: 1px solid var(--ui-border);
   border-radius: 16px;
   padding: 1rem;
@@ -973,7 +823,7 @@ p {
 .card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 40%),
-    color-mix(in oklab, var(--panel-soft) 88%, #ffffff 12%);
+    rgba(31, 44, 60, 0.9);
   border: 1px solid var(--ui-border);
   border-radius: 16px;
   padding: 1rem;
@@ -1016,13 +866,13 @@ p {
 }
 
 .inlineLink:hover {
-  border-color: color-mix(in oklab, var(--accent) 58%, #ffffff 42%);
+  border-color: var(--accent-2);
 }
 
 .case {
   background:
     radial-gradient(130% 130% at 100% 0%, #213043 0%, transparent 62%),
-    color-mix(in oklab, var(--panel-soft) 88%, #ffffff 12%);
+    rgba(31, 44, 60, 0.9);
 }
 
 .regional {
@@ -1051,8 +901,8 @@ p {
 }
 
 .officeList li {
-  border: 1px solid color-mix(in oklab, var(--panel) 60%, #ffffff 40%);
-  background: color-mix(in oklab, var(--panel) 82%, #ffffff 18%);
+  border: 1px solid rgba(182, 198, 216, 0.42);
+  background: rgba(28, 39, 53, 0.9);
   color: var(--accent-2);
   border-radius: 999px;
   padding: 0.45rem 0.85rem;
@@ -1068,7 +918,7 @@ p {
 .officeCard {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, transparent 44%),
-    color-mix(in oklab, var(--panel-soft) 90%, #ffffff 10%);
+    rgba(30, 42, 57, 0.9);
   border: 1px solid var(--ui-border);
   border-radius: 14px;
   padding: 1rem;
@@ -1089,7 +939,7 @@ p {
 }
 
 .cta {
-  border-top: 1px solid color-mix(in oklab, var(--panel) 50%, #ffffff 50%);
+  border-top: 1px solid rgba(194, 208, 224, 0.44);
   padding-top: 2rem;
 }
 
@@ -1106,7 +956,7 @@ p {
   border: 1px solid var(--ui-border-strong);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%),
-    color-mix(in oklab, var(--panel-elevated) 84%, #ffffff 16%);
+    rgba(37, 53, 70, 0.92);
   color: var(--text);
   padding: 0.62rem 1rem;
   text-decoration: none;
@@ -1117,12 +967,12 @@ p {
 
 .primaryButton:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent) 52%, #ffffff 48%);
+  border-color: var(--accent);
   box-shadow: var(--ui-shadow-md);
 }
 
 .footerLinks {
-  border-top: 1px solid color-mix(in oklab, var(--panel) 58%, #ffffff 42%);
+  border-top: 1px solid rgba(188, 203, 220, 0.4);
   padding-top: 2rem;
 }
 

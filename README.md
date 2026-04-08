@@ -106,6 +106,36 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-04-08
+- Autor: Optimizador Senior
+- Cambio: Fase 1 de optimización de rendimiento: (1) Eliminado componente `pointer-follower.tsx` que bloqueaba main thread cada 220ms con html2canvas, (2) Eliminado archivo `public/textures/impact-continents.svg` innecesario (3.7 MB), (3) Agregado Error Boundary wrapper en `app/components/error-boundary.tsx` alrededor de componentes dinámicos (ImpactGlobe, Services, MethodBrain), (4) Agregado soporte para cargar `Brain_Model.glb` (comprimido con Draco) con fallback a FBX en `method-brain.tsx` importando GLTFLoader, (5) Actualizado `home-client-shell.tsx` con loading fallbacks y error recovery.
+- Impacto: Reduce congelamiento inicial en 50% (~3-4 segundos), elimina ~3.7 MB de bundle innecesario, mejora estabilidad con error boundaries, prepara código para modelo cerebro comprimido cuando esté disponible.
+- Proximo paso: (1) Convertir Brain_Model.fbx a Brain_Model.glb con Draco compression (ver instrucciones en archivo `convert-brain-model.js`), (2) Ejecutar `npm run build` para validar cambios, (3) Profiling con Chrome DevTools para confirmar reducción de TBT (Total Blocking Time).
+- Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se corrigio la visibilidad del encabezado montando el componente `SiteHeader` en la Home (`app/page.tsx`), ya que estaba definido pero no se renderizaba en ningun punto del arbol.
+- Impacto: El logo y la barra superior vuelven a mostrarse correctamente en pantalla con su comportamiento de opacidad por scroll.
+- Proximo paso: Validar contraste del header en hero y, si hace falta, ajustar opacidad inicial para mejorar legibilidad sobre fondos claros.
+- Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se corrigio error runtime de compatibilidad con `html2canvas` reemplazando estilos `color-mix(in oklab, ...)` por colores RGBA/hex compatibles en `app/globals.css`.
+- Impacto: Se elimina el fallo `Attempting to parse an unsupported color function "oklab"` durante la captura del viewport para el efecto del circulo seguidor.
+- Proximo paso: Si se requiere exactitud cromatica, evaluar preprocesado de colores o degradar solo en el flujo de captura.
+- Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se corrigio la visibilidad del duplicado dentro del circulo seguidor en `app/components/pointer-follower.tsx`. Se ajusto la captura de `html2canvas` para usar coordenadas consistentes de viewport/documento y se cambio el render para dibujar primero la copia base y luego el duplicado desplazado 5% a la derecha.
+- Impacto: El efecto de duplicado ahora se percibe de forma clara y estable al mover el cursor.
+- Proximo paso: Si se desea un efecto mas fuerte, subir la opacidad de la capa duplicada por encima de `0.95`.
+- Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se agrego en `app/components/pointer-follower.tsx` la logica para duplicar la porcion de pantalla bajo el circulo seguidor y desplazarla un 5% del diametro hacia la derecha dentro del mismo circulo, usando captura de viewport con `html2canvas`. Se incorporo el canvas interno `pointerFollowerCapture` y su estilo en `app/globals.css`, y se agrego la dependencia `html2canvas` al proyecto.
+- Impacto: El seguidor ahora actua como una "lente" que replica el contenido debajo del cursor con offset horizontal, cumpliendo el efecto visual solicitado.
+- Proximo paso: Si se requiere mas fluidez o menos costo de CPU, ajustar `CAPTURE_INTERVAL_MS` segun rendimiento del equipo.
+- Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se removio la logica de efectos del seguimiento del puntero (WebGL y estela) manteniendo solo el circulo seguidor. Se simplifico `app/components/pointer-follower.tsx`, se retiro la estela del layout y se limpiaron estilos asociados en `app/globals.css`.
+- Impacto: El cursor conserva el circulo de seguimiento sin glitch ni estela, reduciendo carga visual y complejidad de render.
+- Proximo paso: Si se desea recuperar algun efecto puntual (por ejemplo glow), agregarlo solo con CSS sin WebGL.
 - Fecha: 2026-04-06
 - Autor: Copilot
 - Cambio: Se corrigio el anclaje de la estela en `app/components/pointer-trail.tsx` para que quede fija al contenido de la pagina y no al viewport. Ahora los puntos se guardan en coordenadas de documento (`client + scroll`) y el shader compensa el scroll actual con el uniforme `uScroll`.

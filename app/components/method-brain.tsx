@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.5;
@@ -268,107 +269,126 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       }));
     }
 
-    const loader = new FBXLoader();
+    const fbxLoader = new FBXLoader();
+    const gltfLoader = new GLTFLoader();
     const leftWireMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
     const rightWireMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
 
     const shouldAddMeshEdges = !isLowEndDevice;
 
-    const loadModel = () => loader.load(
-      "/models/Brain_Model.fbx",
-      (object) => {
-        if (isUnmounted) {
-          disposeObjectResources(object);
-          return;
+    // Función compartida para procesar el modelo cargado
+    const processLoadedModel = (object: THREE.Object3D) => {
+      if (isUnmounted) {
+        disposeObjectResources(object);
+        return;
+      }
+
+      const model = object;
+      const bounds = new THREE.Box3().setFromObject(model);
+      const center = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      const sphere = new THREE.Sphere();
+      bounds.getCenter(center);
+      bounds.getSize(size);
+      bounds.getBoundingSphere(sphere);
+
+      let meshCount = 0;
+      const originalMaterials = new Set<THREE.Material>();
+      const meshBounds = new THREE.Box3();
+      const meshCenter = new THREE.Vector3();
+
+      model.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        meshCount += 1;
+
+        const source = node.material;
+        if (Array.isArray(source)) {
+          source.forEach((mat) => originalMaterials.add(mat));
+        } else {
+          originalMaterials.add(source);
         }
 
-        const model = object;
-        const bounds = new THREE.Box3().setFromObject(model);
-        const center = new THREE.Vector3();
-        const size = new THREE.Vector3();
-        const sphere = new THREE.Sphere();
-        bounds.getCenter(center);
-        bounds.getSize(size);
-        bounds.getBoundingSphere(sphere);
+        meshBounds.setFromObject(node);
+        meshBounds.getCenter(meshCenter);
+        node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+      });
 
-        let meshCount = 0;
-        const originalMaterials = new Set<THREE.Material>();
+      originalMaterials.forEach((mat) => mat.dispose());
+
+      const hasValidBounds = Number.isFinite(size.x)
+        && Number.isFinite(size.y)
+        && Number.isFinite(size.z)
+        && Math.max(size.x, size.y, size.z) > 0.0001;
+
+      if (meshCount === 0 || !hasValidBounds) {
+        disposeObjectResources(model);
+        return;
+      }
+
+      model.position.sub(center);
+
+      if (ENABLE_REGION_TRIM) {
+        // Optional trim hook disabled to keep original brain geometry.
+        removeCerebellumAndStemRegion(model);
+        model.updateMatrixWorld(true);
+      }
+
+      // Generate edge lines after pruning so removed regions are not still drawn.
+      if (shouldAddMeshEdges) {
         const meshBounds = new THREE.Box3();
         const meshCenter = new THREE.Vector3();
-
         model.traverse((node) => {
           if (!(node instanceof THREE.Mesh)) return;
-          meshCount += 1;
-
-          const source = node.material;
-          if (Array.isArray(source)) {
-            source.forEach((mat) => originalMaterials.add(mat));
-          } else {
-            originalMaterials.add(source);
-          }
-
           meshBounds.setFromObject(node);
           meshBounds.getCenter(meshCenter);
-          node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+          addSparseEdges(node, meshCenter.x < center.x ? BRAIN_COLORS.left.edge : BRAIN_COLORS.right.edge);
         });
+      }
 
-        originalMaterials.forEach((mat) => mat.dispose());
+      const largest = Math.max(size.x, size.y, size.z, 0.001);
+      const scale = BRAIN_TARGET_SIZE / largest;
+      model.scale.setScalar(scale);
 
-        const hasValidBounds = Number.isFinite(size.x)
-          && Number.isFinite(size.y)
-          && Number.isFinite(size.z)
-          && Math.max(size.x, size.y, size.z) > 0.0001;
+      const fittedRadius = Math.max(sphere.radius * scale, 0.8);
+      brainGroup.position.y = -((fittedRadius * 2) * BRAIN_VERTICAL_SHIFT_RATIO);
+      camera.position.z = THREE.MathUtils.clamp(
+        (fittedRadius * 3.1) / BRAIN_VIEWPORT_SCALE,
+        2.6,
+        5.2,
+      );
 
-        if (meshCount === 0 || !hasValidBounds) {
-          disposeObjectResources(model);
-          return;
+      brainGroup.remove(fallback.object);
+      fallback.dispose();
+      fallbackDisposed = true;
+
+      brainGroup.add(model);
+      loadedModel = model;
+    };
+
+    const loadModel = () => {
+      // Intenta cargar GLB primero (comprimido) luego fallback a FBX
+      gltfLoader.load(
+        "/models/Brain_Model.glb",
+        (gltf) => {
+          processLoadedModel(gltf.scene);
+        },
+        undefined,
+        () => {
+          // Si GLB no existe, intenta FBX
+          fbxLoader.load(
+            "/models/Brain_Model.fbx",
+            (object) => {
+              processLoadedModel(object);
+            },
+            undefined,
+            (error) => {
+              if (isUnmounted) return;
+              reportModelLoadError(error);
+            },
+          );
         }
-
-        model.position.sub(center);
-
-        if (ENABLE_REGION_TRIM) {
-          // Optional trim hook disabled to keep original brain geometry.
-          removeCerebellumAndStemRegion(model);
-          model.updateMatrixWorld(true);
-        }
-
-        // Generate edge lines after pruning so removed regions are not still drawn.
-        if (shouldAddMeshEdges) {
-          const meshBounds = new THREE.Box3();
-          const meshCenter = new THREE.Vector3();
-          model.traverse((node) => {
-            if (!(node instanceof THREE.Mesh)) return;
-            meshBounds.setFromObject(node);
-            meshBounds.getCenter(meshCenter);
-            addSparseEdges(node, meshCenter.x < center.x ? BRAIN_COLORS.left.edge : BRAIN_COLORS.right.edge);
-          });
-        }
-
-        const largest = Math.max(size.x, size.y, size.z, 0.001);
-        const scale = BRAIN_TARGET_SIZE / largest;
-        model.scale.setScalar(scale);
-
-        const fittedRadius = Math.max(sphere.radius * scale, 0.8);
-        brainGroup.position.y = -((fittedRadius * 2) * BRAIN_VERTICAL_SHIFT_RATIO);
-        camera.position.z = THREE.MathUtils.clamp(
-          (fittedRadius * 3.1) / BRAIN_VIEWPORT_SCALE,
-          2.6,
-          5.2,
-        );
-
-        brainGroup.remove(fallback.object);
-        fallback.dispose();
-        fallbackDisposed = true;
-
-        brainGroup.add(model);
-        loadedModel = model;
-      },
-      undefined,
-      (error) => {
-        if (isUnmounted) return;
-        reportModelLoadError(error);
-      },
-    );
+      );
+    };
 
     const windowWithIdle = window as Window & {
       requestIdleCallback?: (

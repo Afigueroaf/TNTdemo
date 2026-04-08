@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
-import { SiteHeader } from "./components/site-header";
-import { PointerFollower } from "./components/pointer-follower";
-import { PointerTrail } from "./components/pointer-trail";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -24,12 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={montserrat.variable}>
-        <PointerTrail />
-        <PointerFollower />
-        <SiteHeader />
-        {children}
-      </body>
+      <body className={montserrat.variable}>{children}</body>
     </html>
   );
 }

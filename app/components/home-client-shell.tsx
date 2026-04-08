@@ -7,18 +7,33 @@ import { impactCountries, impactStats } from "../data/tnt-content";
 import { ExperienceMotion } from "./experience-motion";
 import { SmoothScroll } from "./smooth-scroll";
 import { IntroBillboard } from "./intro-billboard";
+import { ErrorBoundary } from "./error-boundary";
 
+const ImpactGlobeLoading = () => <div className="scenePlaceholder scenePlaceholderImpact" aria-hidden />;
 const ImpactGlobe = dynamic(
   () => import("./impact-globe").then((module) => module.ImpactGlobe),
-  { ssr: false },
+  { 
+    ssr: false,
+    loading: ImpactGlobeLoading,
+  },
 );
+
+const ServicesLoading = () => <div className="scenePlaceholder scenePlaceholderServices" aria-hidden />;
 const Services = dynamic(
   () => import("./services").then((module) => module.Services),
-  { ssr: false },
+  { 
+    ssr: false,
+    loading: ServicesLoading,
+  },
 );
+
+const MethodBrainLoading = () => <div className="scenePlaceholder scenePlaceholderMethodBackdrop" aria-hidden />;
 const MethodBrain = dynamic(
   () => import("./method-brain").then((module) => module.MethodBrain),
-  { ssr: false },
+  { 
+    ssr: false,
+    loading: MethodBrainLoading,
+  },
 );
 
 function DeferredMount({
@@ -99,11 +114,13 @@ export function HomeClientShell() {
       <ExperienceMotion />
 
       <div className="introImpactStage">
-        <ImpactGlobe
-          focusCountryKey={focusedCountryKey}
-          focusUntilMs={focusUntilMs}
-          asBackdrop
-        />
+        <ErrorBoundary>
+          <ImpactGlobe
+            focusCountryKey={focusedCountryKey}
+            focusUntilMs={focusUntilMs}
+            asBackdrop
+          />
+        </ErrorBoundary>
         <IntroBillboard />
 
         <section className="section impactSection" data-reveal>
@@ -154,15 +171,19 @@ export function HomeClientShell() {
       <section className="section servicesSection" data-reveal>
         <p className="eyebrow">Servicios</p>
         <h2><span>Nuestros Servicios</span></h2>
-        <DeferredMount placeholderClassName="scenePlaceholder scenePlaceholderServices">
-          <Services />
-        </DeferredMount>
+        <ErrorBoundary>
+          <DeferredMount placeholderClassName="scenePlaceholder scenePlaceholderServices">
+            <Services />
+          </DeferredMount>
+        </ErrorBoundary>
       </section>
 
       <section className="section methodSection" data-reveal>
-        <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
-          <MethodBrain asBackdrop />
-        </DeferredMount>
+        <ErrorBoundary>
+          <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
+            <MethodBrain asBackdrop />
+          </DeferredMount>
+        </ErrorBoundary>
         <p className="eyebrow">Metodo</p>
         <h2>¿Cómo pensamos?</h2>
         <div className="methodBrainSpacer" aria-hidden />

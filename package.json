@@ -23,6 +23,8 @@
     "world-atlas": "2.0.2"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
     "@types/d3-geo": "3.1.0",
     "@types/node": "22.13.9",
     "@types/react": "19.0.10",

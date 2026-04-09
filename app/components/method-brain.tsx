@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const ENABLE_REGION_TRIM = false;
@@ -256,13 +255,13 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       const message = error instanceof Error ? error.message : String(error);
 
       if (process.env.NODE_ENV !== "production") {
-        console.error("[MethodBrain] Error al cargar /models/Brain_Model.fbx", error);
+        console.error("[MethodBrain] Error al cargar /models/Brain_Model.glb", error);
       }
 
       window.dispatchEvent(new CustomEvent("tnt:model-load-error", {
         detail: {
           component: "MethodBrain",
-          model: "/models/Brain_Model.fbx",
+          model: "/models/Brain_Model.glb",
           message,
           timestamp: Date.now(),
         },
@@ -365,45 +364,33 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
 
     const loadModel = () => {
       const gltfLoader = new GLTFLoader();
-      const fbxLoader = new FBXLoader();
 
-      // Phase 3.5: Try loading GLB first (compressed, ~300KB)
-      // Fallback to FBX if GLB not available (~2.6MB)
+      // Phase 3.5: Load GLB exclusively (compressed, ~2.5MB after conversion)
+      // brain_tex.jpg is embedded in the GLB, textures errors are non-critical
+      gltfLoader.setResourcePath("/models/");
+
       gltfLoader.load(
         "/models/Brain_Model.glb",
         (gltf) => {
           if (isUnmounted) return;
-          console.log("✅ Brain Model loaded from GLB (compressed)");
+          console.log("✅ Brain Model loaded from GLB");
           processLoadedModel(gltf.scene);
         },
         undefined,
         (error) => {
-          // GLB loading error - could be texture issue or file not found
           if (isUnmounted) return;
-          
-          // Check if error is just a missing texture (still continue)
+
           const errorMsg = error instanceof Error ? error.message : String(error);
+          
+          // Texture warnings are not critical - model still loaded
           if (errorMsg.includes("texture") || errorMsg.includes("Couldn't load")) {
-            // Texture error but model loaded - this is acceptable
-            console.warn("⚠️  Brain Model: Texture error but attempting to continue with GLB");
-            // Don't fallback to FBX for texture errors, just report
-          } else {
-            // Actual GLB file not found or other error, fallback to FBX
-            console.log("⚠️  Brain Model GLB not found or error, using FBX fallback");
-            fbxLoader.load(
-              "/models/Brain_Model.fbx",
-              (object) => {
-                if (isUnmounted) return;
-                console.log("✅ Brain Model loaded from FBX");
-                processLoadedModel(object);
-              },
-              undefined,
-              (error) => {
-                if (isUnmounted) return;
-                reportModelLoadError(error);
-              },
-            );
+            console.warn(`⚠️  Brain Model: Texture warning (non-critical): ${errorMsg}`);
+            return; // Don't report error, texture is optional
           }
+          
+          // Actual error - report it
+          console.error(`❌ Brain Model failed to load: ${errorMsg}`);
+          reportModelLoadError(error);
         },
       );
     };

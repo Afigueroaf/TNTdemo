@@ -1,0 +1,309 @@
+SOLUCIONES PASO A PASO - CÓDIGO COMPLETO
+==========================================
+
+=== FIX #1: AGREGAR GLOBAL ERROR TRACKING ===
+Archivo a crear: app/error-tracking.ts
+
+CÓDIGO COMPLETO:
+----------------
+export function initializeErrorTracking() {
+  if (typeof window === "undefined") return;
+
+  // Capturar errores síncronos no capturados
+  window.addEventListener("error", (event) => {
+    const message = event.message || String(event.error);
+    const source = event.filename || "unknown";
+    const line = event.lineno || 0;
+
+    const errorDetail = {
+      type: "sync_error",
+      component: "unknown",
+      message,
+      source,
+      line,
+      timestamp: Date.now(),
+    };
+
+    console.error("[Global Error Handler]", errorDetail);
+
+    // TODO: Enviar a Sentry, LogRocket, etc.
+    // window.dispatchEvent(new CustomEvent("tnt:error", { detail: errorDetail }));
+  });
+
+  // Capturar promesas rechazadas sin .catch()
+  window.addEventListener("unhandledrejection", (event) => {
+    const message = event.reason instanceof Error
+      ? event.reason.message
+      : String(event.reason);
+
+    const errorDetail = {
+      type: "unhandled_promise_rejection",
+      component: "unknown",
+      message,
+      reason: event.reason,
+      timestamp: Date.now(),
+    };
+
+    console.error("[Unhandled Promise Rejection]", errorDetail);
+
+    // TODO: Enviar a Sentry, LogRocket, etc.
+    // window.dispatchEvent(new CustomEvent("tnt:error", { detail: errorDetail }));
+  });
+}
+
+INTEGRAR EN: app/layout.tsx (o root component)
+----------------------------------------------
+"use client";
+
+import { useEffect } from "react";
+import { initializeErrorTracking } from "./error-tracking";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    initializeErrorTracking();
+  }, []);
+
+  return (
+    <html>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+=== FIX #2: IMPACT-GLOBE CLEANUP - AGREGAR 3 LIGHTS ===
+Archivo: app/components/impact-globe.tsx
+Línea: ~635 (en la función cleanup return)
+
+CAMBIO EXACTO:
+--------------
+ANTES:
+      disposePinPrototype();
+      backLight.dispose();
+      globeTexture.dispose();
+
+DESPUÉS:
+      disposePinPrototype();
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
+      backLight.dispose();
+      globeTexture.dispose();
+
+NÚMERO DE LÍNEAS A AGREGAR: 3
+
+=== FIX #3: IMPACT-GLOBE PROMISE CHAIN - AGREGAR .finally() ===
+Archivo: app/components/impact-globe.tsx
+Línea: ~337-362
+
+CAMBIO COMPLETO:
+----------------
+ANTES:
+let disposePinPrototype = () => {};
+
+createLogoPinPrototype(perfProfile.lowEndDevice)
+  .then((prototype) => {
+    if (isUnmounted) {
+      prototype.dispose();
+      return;
+    }
+    disposePinPrototype = prototype.dispose;
+    // ... resto del código ...
+  })
+  .catch((error) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[ImpactGlobe] No se pudo cargar el SVG de pins", error);
+    }
+  });
+
+DESPUÉS:
+let disposePinPrototype: (() => void) | null = null;
+
+createLogoPinPrototype(perfProfile.lowEndDevice)
+  .then((prototype) => {
+    if (isUnmounted) {
+      prototype.dispose();
+      return;
+    }
+    disposePinPrototype = prototype.dispose;
+    // ... resto del código ...
+  })
+  .catch((error) => {
+    if (isUnmounted) return;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[ImpactGlobe] Error SVG pins", { error, message });
+    window.dispatchEvent(new CustomEvent("tnt:component-error", {
+      detail: { component: "ImpactGlobe", resource: "pins", message, timestamp: Date.now() },
+    }));
+  });
+
+TAMBIÉN CAMBIAR EN CLEANUP (línea ~635):
+ANTES:
+  disposePinPrototype();
+
+DESPUÉS:
+  if (disposePinPrototype) {
+    disposePinPrototype();
+  }
+
+=== FIX #4: IMPACT-GLOBE CANVAS TEXTURE - VALIDACIÓN ===
+Archivo: app/components/impact-globe.tsx
+Línea: ~156-159
+
+CAMBIO EXACTO:
+--------------
+ANTES:
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return new THREE.CanvasTexture(canvas);
+  }
+
+DESPUÉS:
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error(
+      "[ImpactGlobe] No se pudo obtener 2D context. Verifique soporte WebGL del navegador."
+    );
+  }
+
+=== FIX #5: METHOD-BRAIN CLEANUP - AGREGAR 3 LIGHTS ===
+Archivo: app/components/method-brain.tsx
+Línea: ~568-571 (justo antes de renderer.dispose())
+
+CAMBIO EXACTO:
+--------------
+ANTES:
+      leftWireMaterial.dispose();
+      rightWireMaterial.dispose();
+      renderer.dispose();
+
+DESPUÉS:
+      leftWireMaterial.dispose();
+      rightWireMaterial.dispose();
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
+      renderer.dispose();
+
+NÚMERO DE LÍNEAS A AGREGAR: 3
+
+=== FIX #6: METHOD-BRAIN GLB LOADER - REMOVER FALLOVER ===
+Archivo: app/components/method-brain.tsx
+Línea: ~368-391
+
+CAMBIO COMPLETO:
+----------------
+ANTES:
+    const loadModel = () => {
+      gltfLoader.load(
+        "/models/Brain_Model.glb",
+        (gltf) => {
+          processLoadedModel(gltf.scene);
+        },
+        undefined,
+        () => {
+          fbxLoader.load(
+            "/models/Brain_Model.fbx",
+            (object) => {
+              processLoadedModel(object);
+            },
+            undefined,
+            (error) => {
+              if (isUnmounted) return;
+              reportModelLoadError(error);
+            },
+          );
+        }
+      );
+    };
+
+DESPUÉS:
+    const loadModel = () => {
+      fbxLoader.load(
+        "/models/Brain_Model.fbx",
+        (object) => {
+          processLoadedModel(object);
+        },
+        undefined,
+        (error) => {
+          if (isUnmounted) return;
+          const message = error instanceof Error ? error.message : String(error);
+          console.error("[MethodBrain] Error cargando FBX", { error, message });
+          reportModelLoadError(error);
+        },
+      );
+    };
+
+EXPLICACIÓN: El .glb no existe, entonces intentar cargarlo es inútil y consume tiempo.
+Vamos directo al FBX que sí existe.
+
+=== FIX #7: METHOD-BRAIN TRAVERSE - AGREGAR TRY-CATCH ===
+Archivo: app/components/method-brain.tsx
+Línea: ~300-314
+
+CAMBIO COMPLETO:
+----------------
+ANTES:
+      model.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        meshCount += 1;
+
+        const source = node.material;
+        if (Array.isArray(source)) {
+          source.forEach((mat) => originalMaterials.add(mat));
+        } else {
+          originalMaterials.add(source);
+        }
+
+        meshBounds.setFromObject(node);
+        meshBounds.getCenter(meshCenter);
+        node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+      });
+
+DESPUÉS:
+      try {
+        model.traverse((node) => {
+          if (!(node instanceof THREE.Mesh)) return;
+
+          try {
+            meshCount += 1;
+
+            const source = node.material;
+            if (Array.isArray(source)) {
+              source.forEach((mat) => originalMaterials.add(mat));
+            } else if (source) {
+              originalMaterials.add(source);
+            }
+
+            meshBounds.setFromObject(node);
+            meshBounds.getCenter(meshCenter);
+            node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+          } catch (nodeError) {
+            console.warn("[MethodBrain] Error en mesh node:", nodeError);
+          }
+        });
+      } catch (traverseError) {
+        console.error("[MethodBrain] Error en traverse:", traverseError);
+        disposeObjectResources(model);
+        return;
+      }
+
+=== FIX #8: SERVICES CLEANUP - AGREGAR 3 LIGHTS ===
+Archivo: app/components/services.tsx
+Línea: ~361 (justo antes de if renderer.domElement.parentNode)
+
+CAMBIO EXACTO:
+--------------
+ANTES:
+      capMaterial.dispose();
+      (edges.material as THREE.Material).dispose();
+      edges.geometry.dispose();
+      if (renderer.domElement.parentNode === host) {
+
+DESPUÉS:
+      capMaterial.dispose();
+      (edges.material as THREE.Material).dispose();
+      edges.geometry.dispose();
+      ambient.dispose();
+      keyLight.dispose();
+      rimLight.dispose();
+      if (renderer.domElement.pa

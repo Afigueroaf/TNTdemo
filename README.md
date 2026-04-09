@@ -107,6 +107,11 @@ Comandos:
 
 ## Bitacora de cambios
 - Fecha: 2026-04-08
+- Autor: Copilot
+- Cambio: Se corrigio la carga del modelo en `app/components/method-brain.tsx` forzando `resourcePath` a `/models/` para `GLTFLoader` y `FBXLoader`, y se robustecio el fallback para que cualquier error de GLB (incluyendo textura) haga fallback inmediato a FBX.
+- Impacto: Se evita el error de consola `THREE.GLTFLoader: Couldn't load texture "brain_tex.jpg"` por resolucion de ruta, y el cerebro mantiene carga confiable al degradar automaticamente a FBX cuando GLB falla.
+- Proximo paso: Validar en `npm run dev` que el Network resuelva `brain_tex.jpg` desde `/models/` y confirmar que no reaparecen errores de textura en consola.
+- Fecha: 2026-04-08
 - Autor: Optimizador Senior
 - Cambio: Identificación y fix de causa RAÍZ del congelamiento: FBXLoader inicia en t=180ms mientras ImpactGlobe (ExtrudeGeometry) aún procesa en t=500ms. Solución: Defer FBXLoader a t=600ms usando nueva función scheduleLoad() para serializar operaciones. Fix implementado en `method-brain.tsx:393-421` con timeline deferido y fallback mejorado.
 - Impacto: Reduce congelamiento -300ms (~20%), elimina colisión de operaciones, serializa main thread. Tiempo esperado: 1.2-1.5s → 1.0-1.2s

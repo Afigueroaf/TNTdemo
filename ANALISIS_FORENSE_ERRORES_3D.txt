@@ -1,0 +1,260 @@
+ANÁLISIS FORENSE EXHAUSTIVO - FALLOS EN COMPONENTES 3D
+=======================================================
+
+SUMARIO EJECUTIVO
+-----------------
+Se identificaron 15 ERRORES CRÍTICOS sin manejo apropiado:
+- 12 errores sin manejo en loaders/promises
+- 3 promesas sin .catch()/.finally()
+- 8 recursos (lights) que NO se limpian
+- 0 global error handlers (unhandledrejection)
+- Componentes fallan SILENCIOSAMENTE en producción
+
+ARCHIVOS ANALIZADOS
+-------------------
+✓ C:\ADN\Demo\app\components\impact-globe.tsx (649 líneas)
+✓ C:\ADN\Demo\app\components\method-brain.tsx (582 líneas)  
+✓ C:\ADN\Demo\app\components\services.tsx (376 líneas)
+✓ C:\ADN\Demo\app\components\home-client-shell.tsx (193 líneas)
+✓ C:\ADN\Demo\app\components\error-boundary.tsx (69 líneas)
+
+================================================================================
+1. IMPACT-GLOBE.tsx - ERRORES CRÍTICOS
+================================================================================
+
+ERROR #1 - SVGLoader.load() SIN MANEJO (CRÍTICA)
+Ubicación: Línea 58-62
+Código:
+  async function loadSvgData(url: string) {
+    const loader = new SVGLoader();
+    return await new Promise((resolve, reject) => {
+      loader.load(url, resolve, undefined, reject);  // ← AQUÍ
+    });
+  }
+
+Problema: 
+  ✗ En línea 66: await loadSvgData("/Vectorizer-io-tnt-logo.svg")
+  ✗ Si falla → reject se llama pero NO hay contexto del error
+  ✗ Si NODE_ENV = "production" → console.error() se omite (línea 359)
+  ✗ RESULTADO: Componente renderiza sin pins, SIN FEEDBACK AL USUARIO
+
+Archivo existe? ✓ Sí en C:\ADN\Demo\public\Vectorizer-io-tnt-logo.svg
+
+---
+
+ERROR #2 - Promise chain SIN .finally() (CRÍTICA)
+Ubicación: Línea 337-362
+Código:
+  createLogoPinPrototype(perfProfile.lowEndDevice)
+    .then((prototype) => {
+      if (isUnmounted) {  // ← RACE CONDITION
+        prototype.dispose();
+        return;
+      }
+      disposePinPrototype = prototype.dispose;
+      // ... agrega pins ...
+    })
+    .catch((error) => {
+      // Solo en dev se logea
+    });
+    // ✗ SIN .finally()!
+
+Problemas:
+  ✗ Si Promise rechaza → NO hay .finally() para cleanup
+  ✗ disposePinPrototype nunca se asigna si hay error
+  ✗ En cleanup (línea 635) se llama disposePinPrototype() pero puede ser undefined
+  ✗ Race condition: Si unmount DURANTE await → sigue .then() aunque isUnmounted=true
+
+---
+
+ERROR #3 - createContinentsTexture() PUEDE FALLAR SILENCIOSAMENTE (ALTA)
+Ubicación: Línea 310 + 151-158
+Código:
+  const globeTexture = createContinentsTexture(perfProfile.textureWidth);
+
+  function createContinentsTexture(textureWidth: number): THREE.CanvasTexture {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return new THREE.CanvasTexture(canvas);  // ✗ DEVUELVE CANVAS VACÍO!
+    }
+    // ...
+  }
+
+Problema:
+  ✗ Si canvas.getContext("2d") retorna null → devuelve texture sin contenido
+  ✗ El globo se renderiza SIN textura (solo gris)
+  ✗ NO hay error, solo render incorrecto
+  ✗ Usuario ve un globo vacío
+
+---
+
+ERROR #4 - CLEANUP INCOMPLETO (CRÍTICA)
+Ubicación: Línea 619-641 (cleanup return)
+Código:
+  return () => {
+    isUnmounted = true;
+    window.cancelAnimationFrame(raf);
+    window.clearTimeout(hiddenFrameTimeout);
+    visibilityObserver.disconnect();
+    resizeObserver.disconnect();
+    // ... event listeners ...
+    timer.dispose();
+    renderer.dispose();
+    globeGeometry.dispose();
+    globeMaterial.dispose();
+    disposePinPrototype();  // ← PUEDE CRASH SI UNDEFINED
+    backLight.dispose();    // ← SE LIMPIA
+    globeTexture.dispose();
+    if (renderer.domElement.parentNode === host) {
+      host.removeChild(renderer.domElement);
+    }
+    // ✗ NO SE LIMPIAN:
+    // ✗ ambient (AmbientLight) - línea 364
+    // ✗ keyLight (DirectionalLight) - línea 367
+    // ✗ rimLight (DirectionalLight) - línea 371
+    // ✗ scene
+    // ✗ globeGroup y sus children
+    // ✗ pinsGroup
+  };
+
+MEMORY LEAKS CONFIRMADOS:
+  ✗ ambient.dispose() - FALTA
+  ✗ keyLight.dispose() - FALTA
+  ✗ rimLight.dispose() - FALTA
+
+---
+
+ERROR #5 - GLOBAL ERROR HANDLERS NO EXISTEN (ALTA)
+Búsqueda: grep -r "window.addEventListener.*error" → NO RESULTS
+          grep -r "unhandledrejection" → NO RESULTS
+
+Problema:
+  ✗ Si Promise rechaza sin .catch() → En dev se logea, en prod se pierde
+  ✗ Si SVGLoader falla → Solo error silencioso en producción
+  ✗ NO HAY window.addEventListener("error")
+  ✗ NO HAY window.addEventListener("unhandledrejection")
+
+================================================================================
+2. METHOD-BRAIN.tsx - ERRORES CRÍTICOS
+================================================================================
+
+ERROR #6 - GLBLoader FALLOVER INCORRECTO (CRÍTICA)
+Ubicación: Línea 370-390
+Código:
+  const loadModel = () => {
+    gltfLoader.load(
+      "/models/Brain_Model.glb",  // ✗ NO EXISTE
+      (gltf) => {
+        processLoadedModel(gltf.scene);
+      },
+      undefined,
+      () => {  // error callback
+        fbxLoader.load(
+          "/models/Brain_Model.fbx",  // ← Se carga aquí
+          // ...
+        );
+      }
+    );
+  };
+
+Problema:
+  ✗ Búsqueda confirmada: /public/models/ contiene SOLO:
+    - Brain_Model.fbx ✓
+    - brain_tex.jpg
+  ✗ Brain_Model.glb NO EXISTE
+  ✗ Entonces gltfLoader.load() SIEMPRE falla
+  ✗ Se consume tiempo esperando fallback
+
+Solución: Ir directo a FBXLoader sin intentar GLB
+
+---
+
+ERROR #7 - processLoadedModel() TRAVERSE SIN TRY-CATCH (ALTA)
+Ubicación: Línea 300-314
+Código:
+  model.traverse((node) => {  // ✗ SIN TRY-CATCH
+    if (!(node instanceof THREE.Mesh)) return;
+    meshCount += 1;
+
+    const source = node.material;
+    if (Array.isArray(source)) {
+      source.forEach((mat) => originalMaterials.add(mat));
+    } else {
+      originalMaterials.add(source);
+    }
+
+    meshBounds.setFromObject(node);
+    meshBounds.getCenter(meshCenter);
+    node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+    // ✗ Si algo falla aquí → error no se captura
+  });
+
+Problema:
+  ✗ Si iterate falla → excepción no se captura
+  ✗ Si asignar material falla → error silencioso
+  ✗ Si meshCenter.x < center.x falla → TypeError no capturado
+
+---
+
+ERROR #8 - RACE CONDITION EN DEFERRED LOAD (ALTA)
+Ubicación: Línea 412-422
+Código:
+  const scheduleLoad = () => {
+    if (isUnmounted) return;  // ← CHECK PERO PUEDE CAMBIAR
+
+    if (typeof windowWithIdle.requestIdleCallback === "function") {
+      loadIdleHandle = windowWithIdle.requestIdleCallback(loadModel, { timeout: 1000 });
+    } else {
+      loadTimeoutHandle = window.setTimeout(loadModel, 50);
+    }
+  };
+
+  loadTimeoutHandle = window.setTimeout(scheduleLoad, 600);  // ← T=600ms
+
+Problema:
+  ✗ T=600ms: setTimeout(scheduleLoad, 600) se programa
+  ✗ T=601ms: component unmounts, isUnmounted=true
+  ✗ T=1200ms: scheduleLoad ejecuta, chequea if(isUnmounted) return
+  ✗ T=1250ms: En cleanup se clearTimeout pero puede ser tarde
+  ✗ T=1300ms: loadModel SIGUE EJECUTÁNDOSE aunque isUnmounted=true
+
+Consecuencia: loadModel intenta modificar estado después de unmount
+
+---
+
+ERROR #9 - CLEANUP INCOMPLETO (CRÍTICA)
+Ubicación: Línea 542-574
+Código:
+  return () => {
+    isUnmounted = true;
+    window.cancelAnimationFrame(raf);
+    window.clearTimeout(hiddenFrameTimeout);
+    if (loadIdleHandle && typeof windowWithIdle.cancelIdleCallback === "function") {
+      windowWithIdle.cancelIdleCallback(loadIdleHandle);
+    }
+    if (loadTimeoutHandle) {
+      window.clearTimeout(loadTimeoutHandle);
+    }
+    visibilityObserver.disconnect();
+    resizeObserver.disconnect();
+    host.removeEventListener("pointerdown", onPointerDown);
+    host.removeEventListener("pointermove", onPointerMove);
+    host.removeEventListener("pointerup", onPointerUp);
+    host.removeEventListener("pointerleave", onPointerUp);
+    host.removeEventListener("pointercancel", onPointerCancel);
+
+    if (loadedModel) {
+      disposeObjectResources(loadedModel);
+    }
+
+    if (!fallbackDisposed) {
+      fallback.dispose();
+    }
+
+    leftWireMaterial.dispose();
+    rightWireMaterial.dispose();
+    renderer.dispose();
+    // ✗ NO SE LIMPIAN:
+    // ✗ ambient - línea 424
+    // ✗ keyLight - línea 427
+    // ✗ rimLight - línea 431

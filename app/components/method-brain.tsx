@@ -206,7 +206,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   
   // Phase 3.6: Sequential loading - MethodBrain loads at t=5000ms
-  const canLoad = useSequentialLoad("MethodBrain");
+  const { canLoad, signalReady } = useSequentialLoad("MethodBrain");
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
@@ -503,6 +503,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
 
     let raf = 0;
     let hiddenFrameTimeout = 0;
+    let firstFrameRendered = false;
 
     function scheduleNextFrame(hidden = false) {
       if (hidden) {
@@ -530,6 +531,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       angularVelocityX *= inertia;
 
       renderer.render(scene, camera);
+      if (!firstFrameRendered) { firstFrameRendered = true; signalReady(); }
       scheduleNextFrame();
     }
 

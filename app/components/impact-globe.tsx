@@ -33,7 +33,7 @@ function getDevicePerfProfile(): DevicePerfProfile {
       lowEndDevice: true,
       textureWidth: 1536,
       pixelRatio: Math.min(dpr, 1.3),
-      globeSegments: 72,
+      globeSegments: 56,
     };
   }
 
@@ -41,7 +41,7 @@ function getDevicePerfProfile(): DevicePerfProfile {
     lowEndDevice: false,
     textureWidth: 2048,
     pixelRatio: Math.min(dpr, 1.85),
-    globeSegments: 88,
+      globeSegments: 64,
   };
 }
 
@@ -258,7 +258,7 @@ export function ImpactGlobe({
   const focusUntilMsRef = useRef<number | null>(focusUntilMs);
 
   // Phase 3.6: Sequential loading - ImpactGlobe loads immediately (t=0ms)
-  const canLoad = useSequentialLoad("ImpactGlobe");
+  const { canLoad, signalReady } = useSequentialLoad("ImpactGlobe");
 
   useEffect(() => {
     focusCountryKeyRef.current = focusCountryKey;
@@ -272,72 +272,82 @@ export function ImpactGlobe({
     if (!mount) return;
     const host = mount;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const perfProfile = getDevicePerfProfile();
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    camera.position.set(0, 0, 5.2);
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: !perfProfile.lowEndDevice,
-      alpha: true,
-      powerPreference: perfProfile.lowEndDevice ? "low-power" : "high-performance",
-    });
-    renderer.setPixelRatio(perfProfile.pixelRatio);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    host.appendChild(renderer.domElement);
-
-    function updateRendererSize(width: number, height: number) {
-      if (width <= 0 || height <= 0) return;
-
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height, false);
-    }
-
-    const initialRect = host.getBoundingClientRect();
-    updateRendererSize(initialRect.width, initialRect.height);
-
-    const globeGroup = new THREE.Group();
-    scene.add(globeGroup);
-
-    const globeRadius = 1.56;
-    const globeScale = 0.729;
-    const globeOffsetX = 0.9;
-    const globeOffsetY = 0.0;
-    const effectiveGlobeRadius = globeRadius * globeScale;
-    const globeGeometry = new THREE.SphereGeometry(
-      globeRadius,
-      perfProfile.globeSegments,
-      perfProfile.globeSegments,
-    );
-    const globeTexture = createContinentsTexture(perfProfile.textureWidth);
-    globeTexture.anisotropy = Math.min(
-      renderer.capabilities.getMaxAnisotropy(),
-      perfProfile.lowEndDevice ? 2 : 4,
-    );
-
-    const globeMaterial = new THREE.MeshStandardMaterial({
-      map: globeTexture,
-      color: "#ffffff",
-      emissive: "#5f0f7f",
-      emissiveIntensity: 0.36,
-      roughness: 0.5,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.88,
-    });
-    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-    globeGroup.add(globe);
-
-    globeGroup.scale.setScalar(globeScale);
-    globeGroup.position.set(globeOffsetX, globeOffsetY, 0);
-
-    const pinsGroup = new THREE.Group();
-    globeGroup.add(pinsGroup);
-    let disposePinPrototype: (() => void) | null = null;
     let isUnmounted = false;
+    // Holds the dispose function once THREE.js has been initialized inside the timer.
+    let disposeScene: (() => void) | null = null;
+
+    // Defer all heavy THREE.js initialization to after the first browser paint.
+    // setTimeout(0) yields to the event loop so the browser can paint the placeholder
+    // shell before blocking the main thread with WebGL context creation, canvas
+    // texture generation, and geometry allocation.
+    const initTimer = window.setTimeout(() => {
+      if (isUnmounted) return;
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const perfProfile = getDevicePerfProfile();
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+      camera.position.set(0, 0, 5.2);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: !perfProfile.lowEndDevice,
+        alpha: true,
+        powerPreference: perfProfile.lowEndDevice ? "low-power" : "high-performance",
+      });
+      renderer.setPixelRatio(perfProfile.pixelRatio);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      host.appendChild(renderer.domElement);
+
+      function updateRendererSize(width: number, height: number) {
+        if (width <= 0 || height <= 0) return;
+
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+      }
+
+      const initialRect = host.getBoundingClientRect();
+      updateRendererSize(initialRect.width, initialRect.height);
+
+      const globeGroup = new THREE.Group();
+      scene.add(globeGroup);
+
+      const globeRadius = 1.56;
+      const globeScale = 0.729;
+      const globeOffsetX = 0.9;
+      const globeOffsetY = 0.0;
+      const effectiveGlobeRadius = globeRadius * globeScale;
+      const globeGeometry = new THREE.SphereGeometry(
+        globeRadius,
+        perfProfile.globeSegments,
+        perfProfile.globeSegments,
+      );
+      const globeTexture = createContinentsTexture(perfProfile.textureWidth);
+      globeTexture.anisotropy = Math.min(
+        renderer.capabilities.getMaxAnisotropy(),
+        perfProfile.lowEndDevice ? 2 : 4,
+      );
+
+      const globeMaterial = new THREE.MeshStandardMaterial({
+        map: globeTexture,
+        color: "#ffffff",
+        emissive: "#5f0f7f",
+        emissiveIntensity: 0.36,
+        roughness: 0.5,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.88,
+      });
+      const globe = new THREE.Mesh(globeGeometry, globeMaterial);
+      globeGroup.add(globe);
+
+      globeGroup.scale.setScalar(globeScale);
+      globeGroup.position.set(globeOffsetX, globeOffsetY, 0);
+
+      const pinsGroup = new THREE.Group();
+      globeGroup.add(pinsGroup);
+      let disposePinPrototype: (() => void) | null = null;
 
     createLogoPinPrototype(perfProfile.lowEndDevice)
       .then((prototype) => {
@@ -542,6 +552,7 @@ export function ImpactGlobe({
 
     let raf = 0;
     let hiddenFrameTimeout = 0;
+    let firstFrameRendered = false;
 
     function scheduleNextFrame(hidden = false) {
       if (hidden) {
@@ -584,6 +595,7 @@ export function ImpactGlobe({
         angularVelocityX = THREE.MathUtils.lerp(angularVelocityX, 0, 0.2 * frameScale);
 
         renderer.render(scene, camera);
+        if (!firstFrameRendered) { firstFrameRendered = true; signalReady(); }
         scheduleNextFrame();
         return;
       }
@@ -627,41 +639,52 @@ export function ImpactGlobe({
       angularVelocityX *= damping;
 
       renderer.render(scene, camera);
+      if (!firstFrameRendered) {
+        firstFrameRendered = true;
+        signalReady();
+      }
       scheduleNextFrame();
     }
 
-    animate();
+      animate();
+
+      // Store the dispose function so the useEffect cleanup can call it
+      // even if the component unmounts after the setTimeout has fired.
+      disposeScene = () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(hiddenFrameTimeout);
+        visibilityObserver.disconnect();
+        resizeObserver.disconnect();
+        host.removeEventListener("pointerenter", onPointerEnter);
+        host.removeEventListener("pointerdown", onPointerDown);
+        host.removeEventListener("pointermove", onPointerMove);
+        host.removeEventListener("pointerup", onPointerUp);
+        host.removeEventListener("pointerleave", onPointerLeave);
+        host.removeEventListener("pointercancel", onPointerCancel);
+        timer.dispose();
+        renderer.dispose();
+        globeGeometry.dispose();
+        globeMaterial.dispose();
+        if (disposePinPrototype) {
+          disposePinPrototype();
+        }
+        ambient.dispose();
+        keyLight.dispose();
+        rimLight.dispose();
+        backLight.dispose();
+        globeTexture.dispose();
+        if (renderer.domElement.parentNode === host) {
+          host.removeChild(renderer.domElement);
+        }
+      };
+    }, 0);
 
     return () => {
       isUnmounted = true;
-      window.cancelAnimationFrame(raf);
-      window.clearTimeout(hiddenFrameTimeout);
-      visibilityObserver.disconnect();
-      resizeObserver.disconnect();
-      host.removeEventListener("pointerenter", onPointerEnter);
-      host.removeEventListener("pointerdown", onPointerDown);
-      host.removeEventListener("pointermove", onPointerMove);
-      host.removeEventListener("pointerup", onPointerUp);
-      host.removeEventListener("pointerleave", onPointerLeave);
-      host.removeEventListener("pointercancel", onPointerCancel);
-      timer.dispose();
-      renderer.dispose();
-      globeGeometry.dispose();
-      globeMaterial.dispose();
-      if (disposePinPrototype) {
-        disposePinPrototype();
-      }
-      // Dispose all lights (FIX: evitar memory leak)
-      ambient.dispose();
-      keyLight.dispose();
-      rimLight.dispose();
-      backLight.dispose();
-      globeTexture.dispose();
-      if (renderer.domElement.parentNode === host) {
-         host.removeChild(renderer.domElement);
-       }
-     };
-   }, [canLoad]);
+      window.clearTimeout(initTimer);
+      if (disposeScene) disposeScene();
+    };
+  }, [canLoad]);
 
   return (
     <div className={`impactGlobeWrap${asBackdrop ? " impactGlobeWrapBackdrop" : ""}`}>

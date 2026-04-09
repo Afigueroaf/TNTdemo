@@ -11,7 +11,7 @@ export function Services() {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   // Phase 3.6: Sequential loading - Services loads at t=2500ms
-  const canLoad = useSequentialLoad("Services");
+  const { canLoad, signalReady } = useSequentialLoad("Services");
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
@@ -320,6 +320,7 @@ export function Services() {
       raf = window.requestAnimationFrame(animate);
     }
 
+    let firstFrameRendered = false;
     function animate() {
       if (!isVisible) {
         scheduleNextFrame(true);
@@ -358,6 +359,7 @@ export function Services() {
       angularVelocityY *= damping;
 
       renderer.render(scene, camera);
+      if (!firstFrameRendered) { firstFrameRendered = true; signalReady(); }
       scheduleNextFrame();
     }
 

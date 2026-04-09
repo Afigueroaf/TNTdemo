@@ -371,10 +371,8 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     const loadModel = () => {
       const gltfLoader = new GLTFLoader();
 
-      // Phase 3.5: Load GLB exclusively (compressed, ~2.5MB after conversion)
-      // brain_tex.jpg is embedded in the GLB, textures errors are non-critical
-      gltfLoader.setResourcePath("/models/");
-
+      // Phase 3.5: Load GLB exclusively (~2.5MB)
+      // All textures are embedded in the GLB, no external resources needed
       gltfLoader.load(
         "/models/Brain_Model.glb",
         (gltf) => {
@@ -385,16 +383,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
         undefined,
         (error) => {
           if (isUnmounted) return;
-
           const errorMsg = error instanceof Error ? error.message : String(error);
-          
-          // Texture warnings are not critical - model still loaded
-          if (errorMsg.includes("texture") || errorMsg.includes("Couldn't load")) {
-            console.warn(`⚠️  Brain Model: Texture warning (non-critical): ${errorMsg}`);
-            return; // Don't report error, texture is optional
-          }
-          
-          // Actual error - report it
           console.error(`❌ Brain Model failed to load: ${errorMsg}`);
           reportModelLoadError(error);
         },

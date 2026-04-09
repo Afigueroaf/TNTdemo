@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { geoEquirectangular, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
+import { useSequentialLoad } from "../hooks/use-sequential-load";
 import worldLand50m from "world-atlas/land-50m.json";
 import { impactCountries } from "../data/tnt-content";
 
@@ -256,12 +257,17 @@ export function ImpactGlobe({
   const focusCountryKeyRef = useRef<string | null>(focusCountryKey);
   const focusUntilMsRef = useRef<number | null>(focusUntilMs);
 
+  // Phase 3.6: Sequential loading - ImpactGlobe loads immediately (t=0ms)
+  const canLoad = useSequentialLoad("ImpactGlobe");
+
   useEffect(() => {
     focusCountryKeyRef.current = focusCountryKey;
     focusUntilMsRef.current = focusUntilMs;
   }, [focusCountryKey, focusUntilMs]);
 
   useEffect(() => {
+    if (!canLoad) return; // Don't start loading until scheduled
+    
     const mount = mountRef.current;
     if (!mount) return;
     const host = mount;
@@ -652,10 +658,10 @@ export function ImpactGlobe({
       backLight.dispose();
       globeTexture.dispose();
       if (renderer.domElement.parentNode === host) {
-        host.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
+         host.removeChild(renderer.domElement);
+       }
+     };
+   }, [canLoad]);
 
   return (
     <div className={`impactGlobeWrap${asBackdrop ? " impactGlobeWrapBackdrop" : ""}`}>

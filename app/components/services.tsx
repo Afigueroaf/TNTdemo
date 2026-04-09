@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { useSequentialLoad } from "../hooks/use-sequential-load";
 import brandingHome from "../../Pictures/branding-home.png";
 import creatividadHome from "../../Pictures/creatividad-home.png";
 import marketingExperiencialHome from "../../Pictures/markenting-experiencial.png";
@@ -9,7 +10,12 @@ import marketingDigitalHome from "../../Pictures/marketing-digital-home.png";
 export function Services() {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
+  // Phase 3.6: Sequential loading - Services loads at t=2500ms
+  const canLoad = useSequentialLoad("Services");
+
   useEffect(() => {
+    if (!canLoad) return; // Don't start loading until scheduled
+    
     const mount = mountRef.current;
     if (!mount) return;
     const host = mount;
@@ -389,7 +395,7 @@ export function Services() {
         host.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [canLoad]);
 
   return (
     <div className="impactGlobeWrap">

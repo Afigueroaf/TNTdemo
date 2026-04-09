@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { useSequentialLoad } from "../hooks/use-sequential-load";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.5;
@@ -203,8 +204,13 @@ function createFallbackWireframeBrain() {
 
 export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  
+  // Phase 3.6: Sequential loading - MethodBrain loads at t=5000ms
+  const canLoad = useSequentialLoad("MethodBrain");
 
   useEffect(() => {
+    if (!canLoad) return; // Don't start loading until scheduled
+    
     const mount = mountRef.current;
     if (!mount) return;
     const host = mount;
@@ -406,14 +412,9 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     let loadIdleHandle = 0;
     let loadTimeoutHandle = 0;
 
-    // FIX: Defer FBXLoader para evitar colisión con ExtrudeGeometry
-    // ImpactGlobe inicia en t=0ms
-    // ExtrudeGeometry (pesado) comienza en t=500ms
-    // Antes: FBXLoader comenzaba en t=180ms (colisión en t=500-700ms)
-    // Ahora: FBXLoader comienza en t=600ms (DESPUÉS de ExtrudeGeometry)
-    // Impacto: -300ms (~20% mejora)
-    const DEFER_FBX_LOAD_MS = 600;
-
+    // Phase 3.6: Sequential component loading
+    // Ensures loading order: ImpactGlobe (0ms) → Services (2500ms) → MethodBrain (5000ms)
+    // Prevents main thread contention and improves perceived performance
     const scheduleLoad = () => {
       if (isUnmounted) return;
 
@@ -424,7 +425,8 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       }
     };
 
-    loadTimeoutHandle = window.setTimeout(scheduleLoad, DEFER_FBX_LOAD_MS);
+    // Begin loading immediately when this effect runs
+    scheduleLoad();
 
     const ambient = new THREE.AmbientLight("#d8d8ff", 1.02);
     scene.add(ambient);
@@ -578,10 +580,10 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       rimLight.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === host) {
-        host.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
+         host.removeChild(renderer.domElement);
+       }
+     };
+   }, [canLoad]);
 
   return (
     <div className={asBackdrop ? "methodBrainWrap methodBrainWrapBackdrop" : "methodBrainWrap"}>

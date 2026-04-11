@@ -2,6 +2,15 @@
 
 ## Agentes
 
+### frontend-inmersivo-3d-senior
+Uso recomendado:
+- Diseñar e implementar componentes React 3D de alto rendimiento.
+- Optimizar escenas Three.js (globe, prisma, cerebro) con enfoque en 60 FPS.
+- Resolver bottlenecks de rendimiento (TBT, FCP, LCP).
+- Asegurar experiencia inmersiva coherente en mobile/tablet/desktop.
+- Aplicar lazy loading, error boundaries y cleanup de recursos 3D.
+- Justificar decisiones de arquitectura con impacto medible en perf.
+
 ### arquitecto-inicial
 Uso recomendado:
 - Definir arquitectura base del proyecto.

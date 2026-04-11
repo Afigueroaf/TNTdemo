@@ -68,6 +68,7 @@ Construir un modelo demo institucional para TNT Marketing que conserve su estruc
 
 ## Gobernanza de agentes y skills
 Agentes recomendados:
+- **frontend-inmersivo-3d-senior**: Diseño e implementación de componentes React 3D, optimización de rendimiento, cleanup de recursos.
 - arquitecto-inicial: arquitectura, limites de modulos y decisiones base.
 - director-experiencia-web: narrativa interactiva, motion strategy y jerarquia visual.
 - integrador-contenido-tnt: mapeo de contenido actual hacia modelos editables.
@@ -106,6 +107,26 @@ Comandos:
 - npm run build
 
 ## Bitacora de cambios
+- Fecha: 2026-04-11
+- Autor: Copilot
+- Cambio: Se creo el agente `frontend-inmersivo-3d-senior.agent.md` con especificacion completa de rol, stack tecnologico, requisitos de experiencia, patrones de desarrollo, reglas de operacion y checklist por feature. El agente integra instrucciones senior para JavaScript/Node.js/Next.js/Three.js/Lenis, contexto actual del proyecto TNT (secciones, componentes, estructura), decisiones de arquitectura aplicadas (error boundaries, lazy loading, serialization de carga 3D) y metricas de rendimiento (60 FPS desktop, 45+ mobile, TBT<150ms, Lighthouse>=80). Se actualizo AGENTS.md para registrar el nuevo agente en el catalogo.
+- Impacto: El equipo de frontend ahora tiene un agente especializado con instrucciones explícitas para mantener coherencia inmersiva, optimizar rendimiento y garantizar calidad de código en componentes 3D. Facilita onboarding de nuevos desarrolladores y proporciona referencia clara para decisiones técnicas futuras.
+- Proximo paso: Validar que el agente se aplique en futuras features (verificar uso de lazy loading, cleanup 3D, Lighthouse score). Actualizar agente si surgen nuevos patterns o librerías.
+- Fecha: 2026-04-11
+- Autor: Copilot
+- Cambio: Se reemplazo el efecto wireframe del cerebro por un material traslucido en `app/components/method-brain.tsx`, eliminando la generacion de aristas (`EdgesGeometry`) y oscureciendo la paleta a tonos azul/rojo mas profundos.
+- Impacto: El cerebro mantiene volumen y profundidad visual con una lectura mas limpia y cinematica, sin lineas de malla visibles, consistente en produccion.
+- Proximo paso: Validar contraste final del cerebro sobre fondos claros y oscuros para ajustar opacidad (0.28-0.34) si hiciera falta.
+- Fecha: 2026-04-11
+- Autor: Copilot
+- Cambio: Se aplico un ajuste adicional solicitado al prisma en `app/components/services.tsx`, reduciendo otro 5% su escala sobre el valor previo (`prismScale = 1.2825 * 0.95 * 0.95`).
+- Impacto: El prisma queda aproximadamente 9.75% mas pequeno respecto al valor base original, mejorando su proporcion visual frente al resto de la escena.
+- Proximo paso: Validar en pantalla que la nueva escala mantenga legibilidad de las caras y balance con el cerebro aumentado.
+- Fecha: 2026-04-11
+- Autor: Copilot
+- Cambio: Se ajustaron proporciones visuales 3D segun solicitud: el prisma en `app/components/services.tsx` se redujo 5% (`prismScale = 1.2825 * 0.95`) y el cerebro en `app/components/method-brain.tsx` se aumento 30% en pantalla (`BRAIN_VIEWPORT_SCALE = 1.95`).
+- Impacto: El bloque de servicios gana un prisma ligeramente mas contenido y el cerebro en Metodo obtiene mayor protagonismo visual sin cambiar la estructura del layout.
+- Proximo paso: Validar en desktop y mobile que el nuevo encuadre del cerebro no recorte bordes en viewports bajos.
 - Fecha: 2026-04-08
 - Autor: Copilot
 - Cambio: Se corrigio la carga del modelo en `app/components/method-brain.tsx` forzando `resourcePath` a `/models/` para `GLTFLoader` y `FBXLoader`, y se robustecio el fallback para que cualquier error de GLB (incluyendo textura) haga fallback inmediato a FBX.

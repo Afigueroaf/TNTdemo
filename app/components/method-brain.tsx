@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSequentialLoad } from "../hooks/use-sequential-load";
-import { useScrollAnimationProgress } from "../hooks/use-scroll-animation-progress";
+import { useScrollVelocity } from "../hooks/use-scroll-velocity";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.95;
@@ -184,25 +184,20 @@ function createFallbackTranslucentBrain() {
   };
 }
 
-export function MethodBrain({ asBackdrop = false, methodSectionRef }: { asBackdrop?: boolean; methodSectionRef?: React.RefObject<HTMLElement | null> }) {
+export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const defaultSectionRef = useRef<HTMLElement>(null);
-  const sectionRefToUse = (methodSectionRef?.current ? methodSectionRef : defaultSectionRef) as React.RefObject<HTMLElement>;
   
   // Phase 3.6: Sequential loading - MethodBrain loads at t=5000ms
   const { canLoad, signalReady } = useSequentialLoad("MethodBrain");
   
-  // Scroll-driven animation: track position de "¿Cómo pensamos?" para rotar el cerebro
-  const scrollProgress = useScrollAnimationProgress(sectionRefToUse, {
-    headerOffset: 80,
-    triggerMargin: 200, // Inicia rotación 200px antes de que toque el header
-  });
+  // Scroll-driven animation: captura velocidad del scroll del usuario
+  const scrollData = useScrollVelocity();
   
-  // Usar ref para scrollProgress para evitar re-renders de todo el efecto
-  const scrollProgressRef = useRef(scrollProgress);
+  // Usar ref para scrollData para evitar re-renders de todo el efecto
+  const scrollDataRef = useRef(scrollData);
   useEffect(() => {
-    scrollProgressRef.current = scrollProgress;
-  }, [scrollProgress]);
+    scrollDataRef.current = scrollData;
+  }, [scrollData]);
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
@@ -505,26 +500,33 @@ export function MethodBrain({ asBackdrop = false, methodSectionRef }: { asBackdr
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxVelocity, maxVelocity);
       angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxVelocity, maxVelocity);
 
-      // Scroll-driven animation: rotación del cerebro de frontal a superior
-      // El progreso 0 = vista frontal (rotX = 0)
-      // El progreso 1 = vista superior (rotX = -π/2)
-      const { progress, isActive } = scrollProgressRef.current;
-      const scrollDrivenRotX = progress * (-Math.PI / 2);
+      // Scroll-driven animation: rotación del cerebro basada en velocidad del scroll
+      // Scroll hacia abajo (positivo) = rotar hacia arriba (rotX negativo)
+      // Scroll hacia arriba (negativo) = rotar hacia abajo (rotX positivo)
+      const { velocity, isScrolling } = scrollDataRef.current;
       
-      // Si el scroll está activo, usa la rotación driven; sino, usa la inercial
-      if (isActive) {
-        // Durante el scroll, la rotación X es controlada por el scroll
-        brainGroup.rotation.x = scrollDrivenRotX;
+      // Convierte velocidad del scroll a velocidad angular
+      // Factor de sensibilidad: ajusta cuánto rota por píxel de scroll
+      const scrollSensitivity = 0.015; // rad/pixel de scroll
+      const scrollDrivenAngularX = velocity * scrollSensitivity;
+      
+      // Durante el scroll activo, aplica la rotación basada en velocidad
+      if (isScrolling) {
+        // Acumula rotación basada en scroll
+        brainGroup.rotation.x += scrollDrivenAngularX;
+        // Clampea rotación entre -π/2 (arriba) y π/2 (abajo)
+        brainGroup.rotation.x = THREE.MathUtils.clamp(brainGroup.rotation.x, -Math.PI / 2, Math.PI / 2);
         // La rotación Y continúa por inercial (arrastre del usuario)
         brainGroup.rotation.y += angularVelocityY;
-        // Reduce la velocidad de inercial durante el scroll-driven
-        angularVelocityY *= inertia * 0.8;
+        // Reduce la velocidad de inercial durante el scroll activo
+        angularVelocityY *= inertia * 0.85;
         angularVelocityX *= inertia * 0.5;
       } else {
-        // Fuera del rango de scroll-driven, comportamiento normal interactivo
+        // Fuera del scroll activo, comportamiento normal interactivo
         brainGroup.rotation.y += angularVelocityY;
         brainGroup.rotation.x = THREE.MathUtils.clamp(brainGroup.rotation.x + angularVelocityX, -maxTilt, maxTilt);
-        brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, 0, 0.015);
+        // Lerp suave hacia la rotación X actual (mantiene posición donde paró el scroll)
+        brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, brainGroup.rotation.x, 0.01);
         angularVelocityY *= inertia;
         angularVelocityX *= inertia;
       }

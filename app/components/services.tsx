@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useSequentialLoad } from "../hooks/use-sequential-load";
-import brandingHome from "../../Pictures/branding-home.png";
-import creatividadHome from "../../Pictures/creatividad-home.png";
-import marketingExperiencialHome from "../../Pictures/markenting-experiencial.png";
-import marketingDigitalHome from "../../Pictures/marketing-digital-home.png";
+import brandingHome from "../../Pictures/branding-home.webp";
+import creatividadHome from "../../Pictures/creatividad-home.webp";
+import marketingExperiencialHome from "../../Pictures/markenting-experiencial.webp";
+import marketingDigitalHome from "../../Pictures/marketing-digital-home.webp";
 export function Services() {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
@@ -15,17 +15,27 @@ export function Services() {
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
-    
+
     const mount = mountRef.current;
     if (!mount) return;
     const host = mount;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    const deviceMemory = nav.deviceMemory ?? 4;
-    const isLowEndDevice = deviceMemory <= 4 || window.devicePixelRatio >= 2.5;
+    let isUnmounted = false;
+    // Holds the dispose function once THREE.js has been initialized inside the timer.
+    let disposeScene: (() => void) | null = null;
 
-    const scene = new THREE.Scene();
+    // Defer all heavy THREE.js initialization to after the first browser paint.
+    // setTimeout(0) yields to the event loop so the browser can paint the placeholder
+    // before blocking the main thread with WebGL context creation and geometry allocation.
+    const initTimer = window.setTimeout(() => {
+      if (isUnmounted) return;
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const nav = navigator as Navigator & { deviceMemory?: number };
+      const deviceMemory = nav.deviceMemory ?? 4;
+      const isLowEndDevice = deviceMemory <= 4 || window.devicePixelRatio >= 2.5;
+
+      const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0, 6.4);
 
@@ -59,7 +69,7 @@ export function Services() {
     const prismSides = isLowEndDevice ? 6 : 8;
     // Face ratio target based on source art: 416 / 630.
     const imageAspectRatio = 416 / 630;
-    const prismScale = 1.2825;
+    const prismScale = 1.2825 * 0.95 * 0.95;
     const prismHeight = 2.068 * prismScale;
     const prismOffsetY = -prismHeight * 0.1;
     const prismRadius = (prismHeight * imageAspectRatio) / (2 * Math.sin(Math.PI / prismSides));
@@ -363,41 +373,49 @@ export function Services() {
       scheduleNextFrame();
     }
 
-    animate();
+      animate();
+
+      // Store the dispose function so the useEffect cleanup can call it
+      // even if the component unmounts after the setTimeout has fired.
+      disposeScene = () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(hiddenFrameTimeout);
+        visibilityObserver.disconnect();
+        resizeObserver.disconnect();
+        host.removeEventListener("pointerenter", onPointerEnter);
+        host.removeEventListener("pointerdown", onPointerDown);
+        host.removeEventListener("pointermove", onPointerMove);
+        host.removeEventListener("pointerup", onPointerUp);
+        host.removeEventListener("pointerleave", onPointerLeave);
+        host.removeEventListener("pointercancel", onPointerCancel);
+        timer.dispose();
+        renderer.dispose();
+        prismGeometry.dispose();
+        projectedFaces.forEach((panel) => {
+          panel.geometry.dispose();
+          panel.material.dispose();
+        });
+        loadedTextures.forEach((texture) => texture.dispose());
+        textureCache.clear();
+        sideMaterial.dispose();
+        capMaterial.dispose();
+        (edges.material as THREE.Material).dispose();
+        edges.geometry.dispose();
+        ambient.dispose();
+        keyLight.dispose();
+        rimLight.dispose();
+        if (renderer.domElement.parentNode === host) {
+          host.removeChild(renderer.domElement);
+        }
+      };
+    }, 0);
 
     return () => {
-      window.cancelAnimationFrame(raf);
-      window.clearTimeout(hiddenFrameTimeout);
-      visibilityObserver.disconnect();
-      resizeObserver.disconnect();
-      host.removeEventListener("pointerenter", onPointerEnter);
-      host.removeEventListener("pointerdown", onPointerDown);
-      host.removeEventListener("pointermove", onPointerMove);
-      host.removeEventListener("pointerup", onPointerUp);
-      host.removeEventListener("pointerleave", onPointerLeave);
-      host.removeEventListener("pointercancel", onPointerCancel);
-      timer.dispose();
-      renderer.dispose();
-      prismGeometry.dispose();
-      projectedFaces.forEach((panel) => {
-        panel.geometry.dispose();
-        panel.material.dispose();
-      });
-      loadedTextures.forEach((texture) => texture.dispose());
-      textureCache.clear();
-      sideMaterial.dispose();
-      capMaterial.dispose();
-      (edges.material as THREE.Material).dispose();
-      edges.geometry.dispose();
-      // Dispose all lights (FIX: evitar memory leak)
-      ambient.dispose();
-      keyLight.dispose();
-      rimLight.dispose();
-      if (renderer.domElement.parentNode === host) {
-        host.removeChild(renderer.domElement);
-      }
+      isUnmounted = true;
+      window.clearTimeout(initTimer);
+      if (disposeScene) disposeScene();
     };
-  }, [canLoad]);
+  }, [canLoad, signalReady]);
 
   return (
     <div className="impactGlobeWrap">

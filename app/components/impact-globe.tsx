@@ -684,7 +684,7 @@ export function ImpactGlobe({
       window.clearTimeout(initTimer);
       if (disposeScene) disposeScene();
     };
-  }, [canLoad]);
+  }, [canLoad, signalReady]);
 
   return (
     <div className={`impactGlobeWrap${asBackdrop ? " impactGlobeWrapBackdrop" : ""}`}>

@@ -4,22 +4,21 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSequentialLoad } from "../hooks/use-sequential-load";
+import { useScrollAnimationProgress } from "../hooks/use-scroll-animation-progress";
 
 const ENABLE_REGION_TRIM = false;
-const BRAIN_VIEWPORT_SCALE = 1.5;
+const BRAIN_VIEWPORT_SCALE = 1.95;
 const BRAIN_TARGET_SIZE = 2.6;
 const BRAIN_VERTICAL_SHIFT_RATIO = 0.2;
 
 const BRAIN_COLORS = {
   left: {
-    base: "#3f7fc3",
-    emissive: "#0f2747",
-    edge: "#5d93d1",
+    base: "#1f3f6a",
+    emissive: "#081a30",
   },
   right: {
-    base: "#c34762",
-    emissive: "#3f0c1a",
-    edge: "#d16680",
+    base: "#6a1f32",
+    emissive: "#250913",
   },
 } as const;
 
@@ -135,30 +134,15 @@ function removeCerebellumAndStemRegion(model: THREE.Object3D) {
   });
 }
 
-function addSparseEdges(mesh: THREE.Mesh, color: string) {
-  const edgeGeometry = new THREE.EdgesGeometry(mesh.geometry, 26);
-  const edgeMaterial = new THREE.LineBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.86,
-    depthTest: false,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-  edges.renderOrder = 10;
-  mesh.add(edges);
-}
-
-function createBrainWireMaterial(color: string, emissive: string) {
+function createBrainTranslucentMaterial(color: string, emissive: string) {
   return new THREE.MeshStandardMaterial({
     color,
     emissive,
-    emissiveIntensity: 0.2,
-    roughness: 0.6,
-    metalness: 0.05,
+    emissiveIntensity: 0.14,
+    roughness: 0.68,
+    metalness: 0.04,
     transparent: true,
-    opacity: 0.05,
+    opacity: 0.28,
     depthWrite: false,
     polygonOffset: true,
     polygonOffsetFactor: 1,
@@ -166,28 +150,26 @@ function createBrainWireMaterial(color: string, emissive: string) {
   });
 }
 
-function createFallbackWireframeBrain() {
+function createFallbackTranslucentBrain() {
   const group = new THREE.Group();
-  const leftMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
-  const rightMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
-  leftMaterial.opacity = 0.08;
-  leftMaterial.emissiveIntensity = 0.22;
-  leftMaterial.roughness = 0.56;
+  const leftMaterial = createBrainTranslucentMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
+  const rightMaterial = createBrainTranslucentMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
+  leftMaterial.opacity = 0.34;
+  leftMaterial.emissiveIntensity = 0.16;
+  leftMaterial.roughness = 0.64;
   leftMaterial.metalness = 0.04;
-  rightMaterial.opacity = 0.08;
-  rightMaterial.emissiveIntensity = 0.22;
-  rightMaterial.roughness = 0.56;
+  rightMaterial.opacity = 0.34;
+  rightMaterial.emissiveIntensity = 0.16;
+  rightMaterial.roughness = 0.64;
   rightMaterial.metalness = 0.04;
 
   const left = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), leftMaterial);
   left.scale.set(0.95, 1, 1.08);
   left.position.set(-0.52, 0.05, 0);
-  addSparseEdges(left, BRAIN_COLORS.left.edge);
 
   const right = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), rightMaterial);
   right.scale.set(0.95, 1, 1.08);
   right.position.set(0.52, 0.05, 0);
-  addSparseEdges(right, BRAIN_COLORS.right.edge);
 
   group.add(left, right);
   group.scale.setScalar(BRAIN_VIEWPORT_SCALE);
@@ -202,11 +184,25 @@ function createFallbackWireframeBrain() {
   };
 }
 
-export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
+export function MethodBrain({ asBackdrop = false, methodSectionRef }: { asBackdrop?: boolean; methodSectionRef?: React.RefObject<HTMLElement | null> }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const defaultSectionRef = useRef<HTMLElement>(null);
+  const sectionRefToUse = (methodSectionRef?.current ? methodSectionRef : defaultSectionRef) as React.RefObject<HTMLElement>;
   
   // Phase 3.6: Sequential loading - MethodBrain loads at t=5000ms
   const { canLoad, signalReady } = useSequentialLoad("MethodBrain");
+  
+  // Scroll-driven animation: track position de "¿Cómo pensamos?" para rotar el cerebro
+  const scrollProgress = useScrollAnimationProgress(sectionRefToUse, {
+    headerOffset: 80,
+    triggerMargin: 200, // Inicia rotación 200px antes de que toque el header
+  });
+  
+  // Usar ref para scrollProgress para evitar re-renders de todo el efecto
+  const scrollProgressRef = useRef(scrollProgress);
+  useEffect(() => {
+    scrollProgressRef.current = scrollProgress;
+  }, [scrollProgress]);
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
@@ -250,7 +246,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
     brainGroup.position.y = -(BRAIN_TARGET_SIZE * BRAIN_VERTICAL_SHIFT_RATIO);
     scene.add(brainGroup);
 
-    const fallback = createFallbackWireframeBrain();
+    const fallback = createFallbackTranslucentBrain();
     brainGroup.add(fallback.object);
 
     let loadedModel: THREE.Object3D | null = null;
@@ -274,10 +270,8 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       }));
     }
 
-    const leftWireMaterial = createBrainWireMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
-    const rightWireMaterial = createBrainWireMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
-
-    const shouldAddMeshEdges = !isLowEndDevice;
+    const leftTranslucentMaterial = createBrainTranslucentMaterial(BRAIN_COLORS.left.base, BRAIN_COLORS.left.emissive);
+    const rightTranslucentMaterial = createBrainTranslucentMaterial(BRAIN_COLORS.right.base, BRAIN_COLORS.right.emissive);
 
     // Función compartida para procesar el modelo cargado
     const processLoadedModel = (object: THREE.Object3D) => {
@@ -313,7 +307,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
 
         meshBounds.setFromObject(node);
         meshBounds.getCenter(meshCenter);
-        node.material = meshCenter.x < center.x ? leftWireMaterial : rightWireMaterial;
+        node.material = meshCenter.x < center.x ? leftTranslucentMaterial : rightTranslucentMaterial;
       });
 
       originalMaterials.forEach((mat) => mat.dispose());
@@ -334,18 +328,6 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
         // Optional trim hook disabled to keep original brain geometry.
         removeCerebellumAndStemRegion(model);
         model.updateMatrixWorld(true);
-      }
-
-      // Generate edge lines after pruning so removed regions are not still drawn.
-      if (shouldAddMeshEdges) {
-        const meshBounds = new THREE.Box3();
-        const meshCenter = new THREE.Vector3();
-        model.traverse((node) => {
-          if (!(node instanceof THREE.Mesh)) return;
-          meshBounds.setFromObject(node);
-          meshBounds.getCenter(meshCenter);
-          addSparseEdges(node, meshCenter.x < center.x ? BRAIN_COLORS.left.edge : BRAIN_COLORS.right.edge);
-        });
       }
 
       const largest = Math.max(size.x, size.y, size.z, 0.001);
@@ -523,12 +505,29 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxVelocity, maxVelocity);
       angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxVelocity, maxVelocity);
 
-      brainGroup.rotation.y += angularVelocityY;
-      brainGroup.rotation.x = THREE.MathUtils.clamp(brainGroup.rotation.x + angularVelocityX, -maxTilt, maxTilt);
-      brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, 0, 0.015);
-
-      angularVelocityY *= inertia;
-      angularVelocityX *= inertia;
+      // Scroll-driven animation: rotación del cerebro de frontal a superior
+      // El progreso 0 = vista frontal (rotX = 0)
+      // El progreso 1 = vista superior (rotX = -π/2)
+      const { progress, isActive } = scrollProgressRef.current;
+      const scrollDrivenRotX = progress * (-Math.PI / 2);
+      
+      // Si el scroll está activo, usa la rotación driven; sino, usa la inercial
+      if (isActive) {
+        // Durante el scroll, la rotación X es controlada por el scroll
+        brainGroup.rotation.x = scrollDrivenRotX;
+        // La rotación Y continúa por inercial (arrastre del usuario)
+        brainGroup.rotation.y += angularVelocityY;
+        // Reduce la velocidad de inercial durante el scroll-driven
+        angularVelocityY *= inertia * 0.8;
+        angularVelocityX *= inertia * 0.5;
+      } else {
+        // Fuera del rango de scroll-driven, comportamiento normal interactivo
+        brainGroup.rotation.y += angularVelocityY;
+        brainGroup.rotation.x = THREE.MathUtils.clamp(brainGroup.rotation.x + angularVelocityX, -maxTilt, maxTilt);
+        brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, 0, 0.015);
+        angularVelocityY *= inertia;
+        angularVelocityX *= inertia;
+      }
 
       renderer.render(scene, camera);
       if (!firstFrameRendered) { firstFrameRendered = true; signalReady(); }
@@ -563,8 +562,8 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
         fallback.dispose();
       }
 
-      leftWireMaterial.dispose();
-      rightWireMaterial.dispose();
+      leftTranslucentMaterial.dispose();
+      rightTranslucentMaterial.dispose();
       // Dispose all lights (FIX: evitar memory leak)
       ambient.dispose();
       keyLight.dispose();
@@ -574,7 +573,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
          host.removeChild(renderer.domElement);
        }
      };
-   }, [canLoad]);
+   }, [canLoad, signalReady]);
 
   return (
     <div className={asBackdrop ? "methodBrainWrap methodBrainWrapBackdrop" : "methodBrainWrap"}>

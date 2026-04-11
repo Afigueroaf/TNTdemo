@@ -84,6 +84,9 @@ export function HomeClientShell() {
 
   // Tracks whether the current focus was triggered by hover (vs. click)
   const focusSourceRef = useRef<"hover" | "click" | null>(null);
+  
+  // Referencia a la sección de método para scroll-driven animation del cerebro
+  const methodSectionRef = useRef<HTMLElement>(null);
 
   function focusCountryOnGlobe(countryKey: string) {
     focusSourceRef.current = "click";
@@ -173,14 +176,14 @@ export function HomeClientShell() {
          </DeferredMount>
        </section>
 
-       <section className="section methodSection" data-reveal>
-         <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
-           <MethodBrain asBackdrop />
-         </DeferredMount>
-         <p className="eyebrow">Metodo</p>
-        <h2>¿Cómo pensamos?</h2>
-        <div className="methodBrainSpacer" aria-hidden />
-      </section>
+       <section className="section methodSection" ref={methodSectionRef} data-reveal>
+          <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
+            <MethodBrain asBackdrop methodSectionRef={methodSectionRef} />
+          </DeferredMount>
+          <p className="eyebrow">Metodo</p>
+         <h2>¿Cómo pensamos?</h2>
+         <div className="methodBrainSpacer" aria-hidden />
+       </section>
     </>
   );
 }

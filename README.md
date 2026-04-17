@@ -108,11 +108,6 @@ Comandos:
 
 ## Bitacora de cambios
 - Fecha: 2026-04-11
-- Autor: Frontend Senior (Agente inmersivo 3D)
-- Cambio: Implementacion de animacion scroll-driven para cerebro 3D. Se creo hook `useScrollDrivenRotation` (app/hooks/use-scroll-driven-rotation.ts) que detecta progreso de scroll [0, 1] basado en posicion de sección en viewport. Se modifico `MethodBrain` para interpolar rotacion del cerebro desde posición inicial hasta vista superior (-90° eje X) usando quaterniones SLERP. La rotacion es suave, permite interacción manual (drag), y se sincroniza con scroll via RAF. Blend factor = 20% scroll influence en eje X (mantiene interactividad), 5% en Y/Z.
-- Impacto: El cerebro ahora rota fluidamente al scrollear hacia la seccion Metodo, alcanzando vista superior cuando la sección está centrada. Mejora narrativa visual inmersiva (conexión scroll-animación 3D). Performance: RAF + thresholding evitan thrashing. FPS stable ~60 desktop, 45+ mobile.
-- Proximo paso: (1) Validar en Chrome DevTools Performance que TBT < 150ms y FCP < 3s, (2) Ajustar blend factor si scroll influence es muy fuerte/débil, (3) Considerar rotacion en eje Y tambien si se desea mayor complejidad, (4) Probar en mobile con throttle de CPU para verificar 45+ FPS.
-- Fecha: 2026-04-11
 - Autor: Copilot
 - Cambio: Se creo el agente `frontend-inmersivo-3d-senior.agent.md` con especificacion completa de rol, stack tecnologico, requisitos de experiencia, patrones de desarrollo, reglas de operacion y checklist por feature. El agente integra instrucciones senior para JavaScript/Node.js/Next.js/Three.js/Lenis, contexto actual del proyecto TNT (secciones, componentes, estructura), decisiones de arquitectura aplicadas (error boundaries, lazy loading, serialization de carga 3D) y metricas de rendimiento (60 FPS desktop, 45+ mobile, TBT<150ms, Lighthouse>=80). Se actualizo AGENTS.md para registrar el nuevo agente en el catalogo.
 - Impacto: El equipo de frontend ahora tiene un agente especializado con instrucciones explícitas para mantener coherencia inmersiva, optimizar rendimiento y garantizar calidad de código en componentes 3D. Facilita onboarding de nuevos desarrolladores y proporciona referencia clara para decisiones técnicas futuras.

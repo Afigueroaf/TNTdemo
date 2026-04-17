@@ -174,13 +174,13 @@ export function HomeClientShell() {
        </section>
 
        <section className="section methodSection" data-reveal>
-          <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
-            <MethodBrain asBackdrop />
-          </DeferredMount>
-          <p className="eyebrow">Metodo</p>
-         <h2>¿Cómo pensamos?</h2>
-         <div className="methodBrainSpacer" aria-hidden />
-       </section>
+         <DeferredMount placeholderClassName="scenePlaceholderMethodBackdrop">
+           <MethodBrain asBackdrop />
+         </DeferredMount>
+         <p className="eyebrow">Metodo</p>
+        <h2>¿Cómo pensamos?</h2>
+        <div className="methodBrainSpacer" aria-hidden />
+      </section>
     </>
   );
 }

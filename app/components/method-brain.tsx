@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSequentialLoad } from "../hooks/use-sequential-load";
-import { useScrollDrivenRotation } from "../hooks/use-scroll-driven-rotation";
 
 const ENABLE_REGION_TRIM = false;
 const BRAIN_VIEWPORT_SCALE = 1.95;
@@ -186,34 +185,9 @@ function createFallbackTranslucentBrain() {
 
 export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const sectionRef = useRef<HTMLElement | null>(null);
   
   // Phase 3.6: Sequential loading - MethodBrain loads at t=5000ms
   const { canLoad, signalReady } = useSequentialLoad("MethodBrain");
-  
-  // Scroll-driven rotation: calcula progreso [0, 1] desde que entra la sección
-  const { progress: scrollProgress } = useScrollDrivenRotation(sectionRef);
-
-  // Localizar la sección padre cuando el componente monta
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-    
-    // Buscar la sección contenedora (methodSection, servicesSection, etc.)
-    let section = mount.closest("section");
-    if (!section) {
-      section = mount.closest("[class*='Section']");
-    }
-    if (!section) {
-      section = mount.closest("div[class*='section']");
-    }
-    
-    sectionRef.current = section as HTMLElement | null;
-    
-    if (!section && process.env.NODE_ENV !== "production") {
-      console.warn("[MethodBrain] No pude localizar la sección contenedora para scroll-driven rotation");
-    }
-  }, []);
 
   useEffect(() => {
     if (!canLoad) return; // Don't start loading until scheduled
@@ -508,17 +482,6 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       raf = window.requestAnimationFrame(animate);
     }
 
-    /**
-     * Interpola suavemente entre dos quaterniones basado en progress [0, 1].
-     * Progress 0 → rotación inicial (sin cambio)
-     * Progress 1 → rotación final (vista superior a -90 grados eje X)
-     */
-    const initialQuat = new THREE.Quaternion(); // Identidad
-    const targetQuat = new THREE.Quaternion(); // Vista superior
-    
-    // Vista superior: rotación -90 grados alrededor del eje X
-    targetQuat.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-
     function animate() {
       if (!isVisible) {
         scheduleNextFrame(true);
@@ -527,24 +490,9 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
       angularVelocityY = THREE.MathUtils.clamp(angularVelocityY, -maxVelocity, maxVelocity);
       angularVelocityX = THREE.MathUtils.clamp(angularVelocityX, -maxVelocity, maxVelocity);
 
-      // Aplicar interacción manual (drag)
       brainGroup.rotation.y += angularVelocityY;
       brainGroup.rotation.x = THREE.MathUtils.clamp(brainGroup.rotation.x + angularVelocityX, -maxTilt, maxTilt);
       brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, 0, 0.015);
-
-      // Aplicar rotación scroll-driven
-      // Interpolar suavemente entre quaterniones basado en scrollProgress
-      const blendedQuat = new THREE.Quaternion().copy(initialQuat);
-      blendedQuat.slerp(targetQuat, scrollProgress);
-      
-      // Convertir quaternion interpolado a Euler
-      const scrollEuler = new THREE.Euler().setFromQuaternion(blendedQuat);
-      
-      // Blendear suavemente entre rotación manual y scroll-driven
-      // 20% influencia scroll, 80% influencia manual (para mantener interactividad)
-      brainGroup.rotation.x = THREE.MathUtils.lerp(brainGroup.rotation.x, scrollEuler.x, 0.2);
-      brainGroup.rotation.y = THREE.MathUtils.lerp(brainGroup.rotation.y, scrollEuler.y, 0.05);
-      brainGroup.rotation.z = THREE.MathUtils.lerp(brainGroup.rotation.z, scrollEuler.z, 0.05);
 
       angularVelocityY *= inertia;
       angularVelocityX *= inertia;
@@ -593,7 +541,7 @@ export function MethodBrain({ asBackdrop = false }: { asBackdrop?: boolean }) {
          host.removeChild(renderer.domElement);
        }
      };
-   }, [canLoad, signalReady, scrollProgress]);
+   }, [canLoad, signalReady]);
 
   return (
     <div className={asBackdrop ? "methodBrainWrap methodBrainWrapBackdrop" : "methodBrainWrap"}>
